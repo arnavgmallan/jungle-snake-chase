@@ -1,0 +1,4045 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#122e20">
+<title>Jungle Snake Chase - Realistic Rainforest Reserve</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#122e20;color:#fff;font-family:ui-rounded,"Trebuchet MS",system-ui,sans-serif;touch-action:none;user-select:none}
+canvas#game{display:block;width:100%;height:100%;touch-action:none}
+.ui{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:max(12px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));z-index:10}
+.top-bar{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.brand,.pill,.action,.card,.minimap-card{background:linear-gradient(145deg,#163c2bee,#0b2419ee);border:1px solid #8be48a55;box-shadow:0 12px 36px #030c0899;backdrop-filter:blur(10px)}
+.brand{border-radius:18px;padding:9px 15px}
+.brand b{display:block;font-size:clamp(16px,2.5vw,22px);color:#f2fbe2;letter-spacing:.02em;text-shadow:0 2px 4px #00000088}
+.brand small{display:block;color:#a8df9e;font-size:12px;margin-top:2px}
+.top-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.stats{display:flex;gap:7px;align-items:center}
+.pill{border-radius:999px;padding:8px 14px;font-weight:800;font-size:14px;color:#f8ffdb}
+.pill.easy-toggle{cursor:pointer;pointer-events:auto;border:1.5px solid #ffd54faa;background:linear-gradient(145deg,#4e3c10ee,#2e2205ee);color:#ffe082;font-size:13px;font-weight:900;box-shadow:0 3px 10px #00000055;transition:all .15s ease}
+.pill.easy-toggle:active,.pill.easy-toggle:hover{background:linear-gradient(145deg,#6b5215ee,#3d2d06ee);transform:scale(1.04)}
+.pill.easy-toggle.brisk{border-color:#5cd475aa;background:linear-gradient(145deg,#1b4530ee,#0e261aee);color:#a5d6a7}
+.sound,.fs-btn{pointer-events:auto;border:1px solid #ffffff44;background:linear-gradient(145deg,#23563e,#133423);color:white;border-radius:50%;width:38px;height:38px;font-size:18px;cursor:pointer;display:grid;place-items:center;box-shadow:0 3px 10px #00000044;transition:transform .1s ease}
+.sound:active,.fs-btn:active{transform:scale(0.92)}
+
+/* Jacobson's Scent Organ / Radar */
+.scent-hud{align-self:center;margin-top:4px;display:flex;align-items:center;gap:10px;background:linear-gradient(145deg,#1c4a34f2,#0e2c1ef2);border:1.5px solid #a8f08c77;border-radius:999px;padding:7px 18px;box-shadow:0 6px 24px #04120bcc}
+.scent-icon{font-size:19px;animation:pulse 2s infinite ease-in-out}
+.scent-text{font-size:13px;font-weight:700;color:#ecffda;letter-spacing:.02em}
+.scent-compass{display:inline-block;font-size:18px;color:#ffdf5d;transition:transform .12s ease-out}
+
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+
+/* Minimap */
+.minimap-card{pointer-events:auto;border-radius:16px;padding:6px;width:120px;height:120px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#minimap{width:108px;height:108px;border-radius:12px;background:#0d291b;border:1.5px solid #ffffff2a}
+.minimap-label{position:absolute;bottom:8px;font-size:9px;font-weight:800;color:#cbf0bd;background:#06140edd;padding:2px 7px;border-radius:999px;letter-spacing:.05em}
+
+/* Tablet Dual-Thumb Bottom Controls */
+.bottom-bar{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;width:100%;padding-bottom:2px}
+.controls-left{display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:auto}
+.pad-sublabel{font-size:11px;font-weight:800;color:#c9eed0;background:#082115dd;padding:3px 10px;border-radius:999px;letter-spacing:.03em;border:1px solid #7be05844}
+.controls-center{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;max-width:380px;pointer-events:auto;margin-bottom:4px}
+.controls-right{display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:auto}
+
+/* Left Thumb D-Pad */
+.pad{pointer-events:auto;display:grid;grid-template:60px 60px/60px 60px 60px;gap:7px;touch-action:none;user-select:none}
+.key{border:2px solid #b5f08d99;background:linear-gradient(160deg,#3d874b,#20502c);color:#ffffff;border-radius:20px;font-size:28px;font-weight:900;box-shadow:0 5px 0 #102816,0 8px 18px #00000088;display:grid;place-items:center;touch-action:none;cursor:pointer;transition:transform .08s ease}
+.key:active,.key.down{transform:translateY(3px);box-shadow:0 2px 0 #102816;background:linear-gradient(160deg,#5ebc6f,#337d44)}
+.key.empty{visibility:hidden}
+
+/* Right Thumb Action Buttons */
+.action{border:2px solid #e0ffd288;border-radius:20px;padding:12px 20px;color:#fff;font:inherit;font-weight:900;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;touch-action:none;user-select:none;box-shadow:0 5px 0 #0b1f16,0 8px 18px #00000055;min-width:175px;transition:transform .08s ease,box-shadow .08s ease,filter .12s ease}
+.action:active{transform:translateY(3px);box-shadow:0 2px 0 #0b1f16}
+.action.dash{background:linear-gradient(145deg,#e65100,#bf360c);height:62px;font-size:17px;border-color:#ffcc80}
+.action.dash .dash-icon{font-size:22px}
+.action.dash.in-range{background:linear-gradient(145deg,#ff8f00,#ff6f00)!important;border-color:#fff9c4!important;box-shadow:0 0 24px #ffd54f,0 5px 0 #b26a00!important;animation:pulseStrike .55s infinite alternate ease-in-out}
+@keyframes pulseStrike{0%{transform:scale(1)}100%{transform:scale(1.07);filter:brightness(1.25)}}
+.action.tongue{background:linear-gradient(145deg,#2e8666,#175740);height:46px;font-size:14px;border-color:#a5d6a7}
+
+.stamina-wrap{width:100%;display:flex;align-items:center;gap:10px;background:#0d281cee;border:1.5px solid #8be48a55;padding:7px 14px;border-radius:14px;box-shadow:0 4px 16px #00000055}
+.stamina-bar{flex:1;height:10px;background:#06140edd;border-radius:999px;overflow:hidden;border:1px solid #a8f08c44}
+.stamina-fill{width:100%;height:100%;background:linear-gradient(90deg,#ffb74d,#ff7043);border-radius:999px;transition:width .1s linear}
+.stamina-label{font-size:10px;font-weight:900;color:#fdd87e;letter-spacing:.05em;white-space:nowrap}
+.hint{font-size:12px;font-weight:700;color:#f0fbe8;background:#0c2b1eee;border:1.5px solid #a8f08c55;padding:7px 14px;border-radius:14px;line-height:1.35;text-align:center;box-shadow:0 4px 14px #00000044;width:100%}
+
+/* Toast Alerts */
+.toast-container{position:fixed;bottom:135px;left:50%;transform:translateX(-50%);pointer-events:none;z-index:90;display:flex;flex-direction:column;align-items:center;gap:6px}
+.toast{background:linear-gradient(135deg,#1f5a3eee,#0f3322ee);border:1.5px solid #a8f08c;color:#f3ffea;font-weight:900;font-size:13px;padding:7px 18px;border-radius:999px;box-shadow:0 6px 20px #000000aa;animation:floatToast 1.6s ease-out forwards;letter-spacing:.02em;white-space:nowrap}
+@keyframes floatToast{0%{opacity:0;transform:translateY(12px) scale(0.92)}15%{opacity:1;transform:translateY(0) scale(1)}80%{opacity:1;transform:translateY(-6px) scale(1)}100%{opacity:0;transform:translateY(-22px) scale(0.95)}}
+
+/* Overlays / Modals */
+.overlay{pointer-events:auto;position:fixed;inset:0;display:grid;place-items:center;background:#04100ad4;backdrop-filter:blur(14px);padding:16px;z-index:100;overflow-y:auto}
+.card{width:min(640px,94vw);max-height:92vh;overflow-y:auto;border-radius:26px;padding:26px;color:white;text-align:center;border:2px solid #b0f28566}
+.card h1{font-size:clamp(22px,4.5vw,34px);margin:0 0 8px;color:#fff4af;text-shadow:0 2px 8px #00000088}
+.card p{color:#d5eacf;margin:0 0 16px;line-height:1.45;font-size:14px}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left}
+.mode{border:1.5px solid #ffffff24;border-radius:16px;padding:12px 14px;background:linear-gradient(145deg,#1f5036,#133724);color:white;font:inherit;cursor:pointer;transition:all .15s ease}
+.mode:hover{border-color:#b4e88b88}
+.mode.sel{outline:3px solid #ffd54f;background:linear-gradient(145deg,#387c50,#225736);box-shadow:0 6px 20px #062013}
+.mode b{display:block;font-size:15px;color:#fff}
+.mode .snake-duo{display:flex;align-items:center;gap:6px;font-size:12px;color:#d4eed0;margin-top:4px}
+.mode .facts{font-size:11px;color:#a8cca2;margin-top:6px;line-height:1.35}
+.start,.endbtn{margin-top:16px;width:100%;text-align:center;background:linear-gradient(180deg,#ffe169,#e0a729);color:#242a10;font-size:18px;font-weight:900;border:0;border-radius:18px;padding:14px;cursor:pointer;box-shadow:0 5px 0 #936e1b,0 8px 24px #00000066}
+.start:active,.endbtn:active{transform:translateY(3px);box-shadow:0 2px 0 #936e1b}
+.endtitle{font-size:28px;font-weight:900;color:#fff099;margin-bottom:8px}
+.hidden{display:none!important}
+
+@media(max-width:920px){
+  .controls-center{max-width:260px}
+  .action{min-width:145px;padding:10px 14px}
+  .action.dash{height:56px;font-size:15px}
+  .pad{grid-template:52px 52px/52px 52px 52px}
+  .key{font-size:24px}
+}
+
+@media(max-width:680px){
+  .modes{grid-template-columns:1fr}
+  .hint{display:none}
+  .pad-sublabel{display:none}
+  .minimap-card{width:90px;height:90px;padding:4px}
+  #minimap{width:80px;height:80px}
+  .scent-hud{padding:4px 12px}
+  .scent-text{font-size:11px}
+  .action{min-width:125px;padding:8px 12px}
+  .pad{grid-template:46px 46px/46px 46px 46px}
+  .key{font-size:20px}
+}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div class="ui">
+  <div class="top-bar">
+    <div class="brand">
+      <b>🐍 Jungle Snake Chase</b>
+      <small>Realistic 3D Rainforest Reserve (96m × 96m)</small>
+    </div>
+    <div class="scent-hud" id="scent-hud" title="Jacobson's Organ - Scent trail detector">
+      <span class="scent-icon">👃</span>
+      <span class="scent-text" id="scent-text">Scent: Tracking prey...</span>
+      <span class="scent-compass" id="scent-compass">➤</span>
+    </div>
+    <div class="top-right">
+      <div class="stats">
+        <button class="pill easy-toggle" id="mode-toggle-btn" title="Toggle Play Style: Relaxed or Brisk">🌟 Relaxed Tablet Mode: ON</button>
+        <div class="pill" id="score-pill">🐍 Prey: 0 / 5</div>
+        <div class="pill" id="frogs-pill">🐸 Frogs: 0</div>
+        <div class="pill" id="time-pill">⏱ 0:00</div>
+        <button class="sound" id="sound-btn" aria-label="Toggle audio" title="Audio Enabled">🔊</button>
+        <button class="fs-btn" id="fs-btn" aria-label="Toggle Fullscreen" title="Tablet Fullscreen Mode">⛶</button>
+      </div>
+      <div class="minimap-card">
+        <canvas id="minimap" width="108" height="108"></canvas>
+        <span class="minimap-label">JUNGLE RESERVE</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-bar">
+    <!-- Left Thumb: Steering D-Pad (Accessible on Tablet) -->
+    <div class="controls-left">
+      <div class="pad" aria-label="Steering D-Pad">
+        <div class="key empty"></div>
+        <button class="key" data-dir="up" title="Surge Forward">▲</button>
+        <div class="key empty"></div>
+        <button class="key" data-dir="left" title="Steer Left">◀</button>
+        <button class="key" data-dir="down" title="Slow Stalk">▼</button>
+        <button class="key" data-dir="right" title="Steer Right">▶</button>
+      </div>
+      <div class="pad-sublabel">Left Thumb Steering</div>
+    </div>
+
+    <!-- Center: Stamina Gauge & Comfort Hint -->
+    <div class="controls-center">
+      <div class="stamina-wrap">
+        <div class="stamina-bar"><div class="stamina-fill" id="stamina-fill"></div></div>
+        <span class="stamina-label">⚡ STRIKE STAMINA</span>
+      </div>
+      <div class="hint"><b>Tablet:</b> Left thumb steers · Right thumb strikes · or touch anywhere!</div>
+    </div>
+
+    <!-- Right Thumb: High-Visibility Action Buttons -->
+    <div class="controls-right">
+      <button class="action dash" id="dash-btn" title="Strike Lunge (Right Thumb)">
+        <span class="dash-icon">⚡</span>
+        <span class="dash-text">STRIKE LUNGE</span>
+      </button>
+      <button class="action tongue" id="tongue-btn" title="Sniff Scent Trail">
+        <span class="tongue-icon">👅</span>
+        <span class="tongue-text">Sniff Scent</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Mode Selection Modal -->
+<div class="overlay" id="menu-modal">
+  <div class="card">
+    <h1>Select Your Apex Serpent</h1>
+    <p>An exciting, easy-to-play wildlife adventure designed for ages 5 to 83! Steer by simply tapping or clicking anywhere on screen (or using keys), track prey scents with your forked tongue, and strike with generous, rewarding lunges.</p>
+    <div class="modes" id="modes-list"></div>
+    <button class="start" id="start-btn">Enter the Jungle & Slither! ▶</button>
+  </div>
+</div>
+
+<!-- Victory / Finish Modal -->
+<div class="overlay hidden" id="finish-modal">
+  <div class="card">
+    <div class="endtitle" id="end-title">Apex Predator Triumph!</div>
+    <p id="end-copy"></p>
+    <button class="endbtn" id="replay-btn">Hunt Again in the Reserve ↻</button>
+  </div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+
+// -------------------------------------------------------------
+// SPECIES DEFINITIONS (BIOLOGICALLY ACCURATE ANATOMY & COLORS)
+// -------------------------------------------------------------
+const modes = [
+  {
+    name: 'Monsoon Rainforest Stalk',
+    player: 'King Cobra',
+    latinPlayer: 'Ophiophagus hannah',
+    food: 'Banded Krait',
+    latinFood: 'Bungarus fasciatus',
+    desc: 'Rainforest Hunt: Tropical rainfall and small crocodile-mouth wide swamps. Sluggish morning Banded Kraits tracked through mist, canopy rain, and wet jungle floor.',
+    biomeType: 'rainforest',
+    isCobra: true,
+    hasRain: true,
+    hasSmallSwamps: true,
+    pBase: [0.38, 0.42, 0.22],
+    pBelly: [0.85, 0.78, 0.52],
+    pPattern: [0.88, 0.76, 0.45],
+    patternType: 1, // Cobra chevron & hood
+    eyeColor: [0.85, 0.62, 0.18], // bright amber
+    pupilSlit: false,
+    scaleGirth: 0.28,
+    fBase: [0.08, 0.08, 0.09],
+    fBelly: [0.92, 0.85, 0.25],
+    fPattern: [0.96, 0.86, 0.18],
+    fPatternType: 2, // Krait bands
+    isBandedKrait: true,
+    isNocturnalSluggish: true,
+    fEyeColor: [0.18, 0.20, 0.22], // glossy obsidian
+    fPupilSlit: false,
+    fGirth: 0.22
+  },
+  {
+    name: 'Verdant Meadow & Trees',
+    player: 'California Kingsnake',
+    latinPlayer: 'Lampropeltis getula californiae',
+    food: 'Timber Rattlesnake',
+    latinFood: 'Crotalus horridus',
+    desc: 'Lush Woodland Hunt: Pure green grass meadows and shaded trees with NO water. A glossy constrictor immune to pit viper venom stalking timber rattlesnakes.',
+    biomeType: 'grassland',
+    isKingsnake: true,
+    noWater: true,
+    pBase: [0.08, 0.08, 0.09],
+    pBelly: [0.95, 0.94, 0.88],
+    pPattern: [0.95, 0.92, 0.84],
+    patternType: 3, // Kingsnake rings
+    eyeColor: [0.35, 0.24, 0.15], // rich hazel
+    pupilSlit: false,
+    scaleGirth: 0.24,
+    fBase: [0.55, 0.44, 0.28],
+    fBelly: [0.82, 0.74, 0.60],
+    fPattern: [0.18, 0.14, 0.12],
+    fPatternType: 4, // Rattler chevrons
+    isRattler: true,
+    fEyeColor: [0.88, 0.70, 0.22], // golden
+    fPupilSlit: true,
+    fGirth: 0.30
+  },
+  {
+    name: 'The Great Swamp & Island',
+    player: 'King Rat Snake (Stink Snake)',
+    latinPlayer: 'Elaphe carinata',
+    food: 'Bamboo Pit Viper',
+    latinFood: 'Trimeresurus stejnegeri',
+    desc: 'Very Big Swamp Hunt: A vast murky wetland with a very small central island. Massive constrictor stalking vibrant emerald Bamboo Pit Vipers through water and cypress roots.',
+    biomeType: 'bigswamp',
+    isKingRatSnake: true,
+    isSwamp: true,
+    hasSmallIsland: true,
+    pBase: [0.56, 0.49, 0.22],
+    pBelly: [0.94, 0.90, 0.58],
+    pPattern: [0.10, 0.09, 0.07],
+    patternType: 6, // King Rat Snake chainmail net & labial sutures
+    eyeColor: [0.72, 0.58, 0.22], // golden olive
+    pupilSlit: false,
+    scaleGirth: 0.31,
+    fBase: [0.20, 0.68, 0.22], // vibrant emerald green Bamboo Pit Viper
+    fBelly: [0.84, 0.95, 0.52], // pale chartreuse lime
+    fPattern: [0.96, 0.98, 0.48], // yellow ventrolateral stripe
+    fPatternType: 5, // Viper lateral line & red tail tip
+    isViper: true,
+    fEyeColor: [0.96, 0.82, 0.20], // bright golden iris
+    fPupilSlit: true, // vertical cat-like slit pupil
+    fGirth: 0.22
+  },
+  {
+    name: 'Arid Outback Desert',
+    player: 'King Brown Snake (Mulga)',
+    latinPlayer: 'Pseudechis australis',
+    food: 'Young Inland Taipan',
+    latinFood: 'Oxyuranus microlepidotus',
+    desc: 'Australian Arid Desert: Windswept red sand dunes, weathered sandstone rocks, and dry spinifex scrub with ZERO water. The mighty King Brown (Mulga) snake, immune to other serpents\' deadly toxins, tracks swift Young Inland Taipans across the desert sands.',
+    biomeType: 'desert',
+    isKingBrownSnake: true,
+    noWater: true,
+    isDesert: true,
+    pBase: [0.48, 0.30, 0.16], // Rich Australian outback copper-bronze / reddish-brown
+    pBelly: [0.96, 0.88, 0.70], // Pale salmon-cream belly
+    pPattern: [0.18, 0.11, 0.07], // Dark chocolate reticulated scale margins
+    patternType: 7, // King Brown reticulated scale margins & clean smooth crown
+    eyeColor: [0.32, 0.22, 0.14], // Deep hazel-brown elapid eye
+    pupilSlit: false, // Round pupil
+    scaleGirth: 0.29, // Heavy-bodied, muscular build
+    fBase: [0.68, 0.58, 0.38], // Golden-tan / desert olive Inland Taipan body
+    fBelly: [0.95, 0.92, 0.65], // Pale sulfur-yellow cream belly
+    fPattern: [0.16, 0.11, 0.08], // Conspicuous dark chocolate head & fine herringbone chevron flecks
+    fPatternType: 8, // Inland Taipan dark head + herringbone chevrons
+    isInlandTaipan: true,
+    isRattler: false, // No rattle! Sleek tapering elapid tail
+    fEyeColor: [0.20, 0.15, 0.10], // Dark obsidian iris with subtle gold ring
+    fPupilSlit: false, // Round pupil
+    fGirth: 0.21 // Sleek, athletic, streamlined build of young taipan
+  }
+];
+
+let selectedMode = 0;
+
+// -------------------------------------------------------------
+// WEBGL SETUP & SHADERS
+// -------------------------------------------------------------
+const canvas = document.querySelector('#game');
+const gl = canvas.getContext('webgl', { antialias: true, alpha: false, powerPreference: 'high-performance' });
+if (!gl) alert('WebGL not supported by your browser');
+
+const vsSource = `
+attribute vec3 aPos;
+attribute vec3 aNormal;
+attribute vec2 aUV;
+
+uniform mat4 uVP;
+uniform mat4 uModel;
+uniform mat3 uNormalMat;
+
+varying vec3 vWorldPos;
+varying vec3 vNormal;
+varying vec2 vUV;
+
+void main() {
+  vec4 wPos = uModel * vec4(aPos, 1.0);
+  vWorldPos = wPos.xyz;
+  vNormal = normalize(uNormalMat * aNormal);
+  vUV = aUV;
+  gl_Position = uVP * wPos;
+}
+`;
+
+const fsSource = `
+precision mediump float;
+
+varying vec3 vWorldPos;
+varying vec3 vNormal;
+varying vec2 vUV;
+
+uniform float uMatType; // 0=terrain, 1=snake body/head, 3=eyes, 4=tongue, 5=water, 6=flora/bark, 7=rocks, 8=rattle
+uniform vec3 uBaseColor;
+uniform vec3 uBellyColor;
+uniform vec3 uPatternColor;
+uniform float uPatternType;
+uniform vec3 uLightDir;
+uniform vec3 uCamPos;
+uniform float uTime;
+uniform float uSpecularPower;
+uniform float uSpecularStrength;
+uniform float uPupilSlit;
+
+void main() {
+  vec3 N = normalize(vNormal);
+  vec3 L = normalize(uLightDir);
+  vec3 V = normalize(uCamPos - vWorldPos);
+  vec3 H = normalize(L + V);
+
+  float nDotL = max(dot(N, L), 0.0);
+  vec3 sunColor = vec3(1.06, 1.02, 0.92);
+  vec3 skyAmbient = vec3(0.38, 0.54, 0.40);
+  vec3 groundBounce = vec3(0.20, 0.26, 0.16) * max(-N.y, 0.0);
+  vec3 diffuse = sunColor * (nDotL * 0.82 + 0.22) + skyAmbient * 0.55 + groundBounce;
+
+  float fresnel = pow(1.0 - max(dot(N, V), 0.0), 3.5);
+  vec3 finalColor = uBaseColor;
+
+  if (uMatType > 0.5 && uMatType < 1.5) {
+    // 1. SNAKE BODY & SEAMLESS HEAD: BIOLOGICALLY REALISTIC SCALES & PATTERNS
+    float dorsalDist = abs(vUV.y - 0.5);
+    float isBelly = smoothstep(0.32, 0.44, dorsalDist);
+
+    // Procedural diamond / hexagonal scale microstructure
+    vec2 scaleUV = vec2(vUV.x * 140.0, vUV.y * 24.0);
+    if (mod(floor(scaleUV.y), 2.0) > 0.5) scaleUV.x += 0.5;
+    vec2 cell = fract(scaleUV) - 0.5;
+    float scDist = length(cell);
+    float scaleBorder = smoothstep(0.40, 0.49, scDist);
+    float keel = (1.0 - abs(cell.y) * 2.2) * (1.0 - isBelly);
+
+    vec3 dorsalCol = uBaseColor;
+
+    if (uPatternType > 0.5 && uPatternType < 1.5) {
+      // King Cobra: sleek smooth head, hood spectacle mark & dorsal chevrons
+      if (vUV.x < 0.05) {
+        // Solid smooth King Cobra cranium (completely line-free, uniform olive-bronze crown)
+        float headV = abs(vUV.y - 0.5) * 2.0; // 0.0 = dorsal crown, 1.0 = lower jaw/throat
+        
+        // Solid lustrous olive-bronze crown (NO lines, NO sutures, NO stripes)
+        dorsalCol = uBaseColor * 1.06;
+        
+        // Smooth gradient to pale creamy throat on underside
+        if (headV > 0.55) {
+          float throatF = smoothstep(0.55, 0.95, headV);
+          dorsalCol = mix(dorsalCol, uBellyColor * 1.12, throatF);
+        }
+      } else if (vUV.x >= 0.05 && vUV.x < 0.22) {
+        // Hood chevron / spectacle marking
+        float hoodU = (vUV.x - 0.05) / 0.17;
+        float mark = length(vec2((dorsalDist) * 3.2, (hoodU - 0.5) * 2.4));
+        if (abs(mark - 0.42) < 0.09) dorsalCol = uPatternColor;
+      }
+      float chev = abs(fract(vUV.x * 16.0 + dorsalDist * 0.35) - 0.5);
+      if (chev < 0.12 && vUV.x >= 0.22) dorsalCol = mix(uBaseColor, uPatternColor, 0.75);
+    } else if (uPatternType > 1.5 && uPatternType < 2.5) {
+      // Banded Krait: bold yellow & black alternating rings
+      float ring = fract(vUV.x * 12.0);
+      dorsalCol = (ring < 0.48) ? uPatternColor : uBaseColor;
+    } else if (uPatternType > 2.5 && uPatternType < 3.5) {
+      // California Kingsnake: high-contrast obsidian black & crisp ivory rings
+      float band = fract(vUV.x * 17.0);
+      dorsalCol = (band < 0.27) ? uPatternColor : uBaseColor;
+    } else if (uPatternType > 3.5 && uPatternType < 4.5) {
+      // Timber Rattler: velvety dark chevrons on tan
+      float chev = abs(fract(vUV.x * 13.0 + dorsalDist * 0.4) - 0.5);
+      dorsalCol = (chev < 0.18) ? uPatternColor : uBaseColor;
+    } else if (uPatternType > 4.5 && uPatternType < 5.5) {
+      // Bamboo Viper: bright emerald with yellow ventrolateral stripe
+      float latStripe = smoothstep(0.06, 0.01, abs(dorsalDist - 0.32));
+      dorsalCol = mix(uBaseColor, uPatternColor, latStripe);
+      if (vUV.x > 0.93) dorsalCol = vec3(0.72, 0.25, 0.18); // prehensile red tail tip
+    } else if (uPatternType > 5.5 && uPatternType < 6.5) {
+      // King Rat Snake (Elaphe carinata):
+      // Bold black keeled margins on each olive-yellow scale creating a sharp netted chainmail look.
+      // Distinct dark labial suture markings near the head (vUV.x < 0.08)
+      // Transitioning to bold dorsal saddles / stripes along posterior body.
+      float netBorder = smoothstep(0.30, 0.45, scDist);
+      dorsalCol = mix(uBaseColor, uPatternColor, netBorder * 0.92);
+      if (vUV.x > 0.42) {
+        float postStripe = abs(fract(vUV.x * 13.0 + dorsalDist * 0.28) - 0.5);
+        if (postStripe < 0.14) dorsalCol = mix(dorsalCol, uPatternColor, 0.70);
+      }
+      if (vUV.x < 0.08) {
+        float lipBar = step(0.62, fract(vUV.y * 6.0));
+        dorsalCol = mix(dorsalCol, uPatternColor, lipBar * 0.85);
+      }
+    } else if (uPatternType > 6.5 && uPatternType < 7.5) {
+      // King Brown Snake (Mulga Snake - Pseudechis australis):
+      // Rich copper-bronze scales with dark chocolate reticulated edges.
+      // Completely smooth, solid crown on head (vUV.x < 0.06).
+      if (vUV.x < 0.06) {
+        dorsalCol = uBaseColor * 1.05;
+      } else {
+        float edge = smoothstep(0.28, 0.48, scDist);
+        dorsalCol = mix(uBaseColor, uPatternColor, edge * 0.88);
+      }
+    } else if (uPatternType > 7.5 && uPatternType < 8.5) {
+      // Young Inland Taipan (Oxyuranus microlepidotus):
+      // Conspicuous dark glossy chocolate/blackish head (vUV.x < 0.08).
+      // Golden-tan to olive body with fine diagonal herringbone / chevron markings.
+      if (vUV.x < 0.08) {
+        dorsalCol = mix(uPatternColor * 0.85, vec3(0.08, 0.06, 0.04), 0.75); // Dark chocolate head
+      } else {
+        float diagFlecks = abs(fract(vUV.x * 24.0 + dorsalDist * 0.6) - 0.5);
+        float chevron = smoothstep(0.12, 0.02, diagFlecks);
+        float edge = smoothstep(0.35, 0.48, scDist);
+        dorsalCol = mix(uBaseColor, uPatternColor, chevron * 0.55 + edge * 0.45);
+      }
+    } else {
+      // Reticulated scale mesh with darker scale edges
+      dorsalCol = mix(uBaseColor, uPatternColor, scaleBorder * 0.55);
+    }
+
+    vec3 skinCol = mix(dorsalCol, uBellyColor, isBelly);
+    float scaleShade = mix(1.0 - scaleBorder * 0.25 + keel * 0.15, 1.0, isBelly);
+    if (((uPatternType > 0.5 && uPatternType < 1.5) || (uPatternType > 6.5 && uPatternType < 7.5)) && vUV.x < 0.06) {
+      scaleShade = 1.0; // Completely line-free and smooth cranial scutes for head crown
+    }
+    skinCol *= scaleShade;
+
+    float spec = pow(max(dot(N, H), 0.0), uSpecularPower) * uSpecularStrength;
+    vec3 irid = vec3(0.14, 0.24, 0.20) * fresnel;
+    finalColor = skinCol * diffuse + vec3(spec) + irid;
+
+  } else if (uMatType > 2.5 && uMatType < 3.5) {
+    // 3. EYE: IRIS, SLIT/ROUND PUPIL, LIMBAL RING & CORNEAL SPECULAR
+    vec2 eyeUV = (vUV - 0.5) * 2.0;
+    float r = length(eyeUV);
+    
+    // Outer dark limbal ring bordering socket
+    vec3 eyeCol = mix(vec3(0.03, 0.03, 0.02), uPatternColor, smoothstep(0.88, 0.70, r));
+    
+    // Inner iris ring detail
+    float irisRing = 0.92 + 0.16 * sin(atan(eyeUV.y, eyeUV.x) * 12.0);
+    eyeCol *= irisRing;
+    
+    // Pupil: deep obsidian black
+    float isPupil = 0.0;
+    if (uPupilSlit > 0.5) {
+      isPupil = step(abs(eyeUV.x) * 3.6 + abs(eyeUV.y) * 0.55, 0.42);
+    } else {
+      isPupil = step(r, 0.38);
+    }
+    eyeCol = mix(eyeCol, vec3(0.015, 0.015, 0.015), isPupil);
+    
+    // Brilliant corneal gloss & lens highlight
+    float eyeSpec = pow(max(dot(N, H), 0.0), 95.0) * 1.8 + pow(1.0 - max(dot(N, V), 0.0), 4.0) * 0.35;
+    finalColor = eyeCol * (diffuse * 0.85 + 0.25) + vec3(eyeSpec);
+
+  } else if (uMatType > 3.5 && uMatType < 4.5) {
+    // 4. FORKED TONGUE
+    vec3 tongueCol = vec3(0.24, 0.04, 0.05);
+    float spec = pow(max(dot(N, H), 0.0), 40.0) * 0.4;
+    finalColor = tongueCol * diffuse + vec3(spec);
+
+  } else if (uMatType > 4.5 && uMatType < 5.5) {
+    // 5. JUNGLE RIVER WATER (Animated ripples & caustics)
+    float wave = sin(vWorldPos.x * 2.4 + uTime * 2.2) * cos(vWorldPos.z * 2.4 + uTime * 1.6) * 0.04;
+    vec3 wN = normalize(N + vec3(wave, 0.0, wave));
+    float wNdotL = max(dot(wN, L), 0.0);
+    vec3 wH = normalize(L + V);
+    float wSpec = pow(max(dot(wN, wH), 0.0), 95.0) * 1.5;
+    float wFresnel = pow(1.0 - max(dot(wN, V), 0.0), 3.0);
+    vec3 wDeep = uBaseColor;
+    vec3 wSky = vec3(0.50, 0.75, 0.82);
+    finalColor = mix(wDeep, wSky, wFresnel * 0.75) * (0.65 + 0.5 * wNdotL) + vec3(wSpec);
+
+  } else if (uMatType > 7.5) {
+    // 8. RATTLESNAKE RATTLE (Segmented keratin buttons)
+    vec3 rattleCol = vec3(0.78, 0.68, 0.48);
+    float ring = step(0.4, fract(vUV.x * 6.0));
+    rattleCol = mix(rattleCol, vec3(0.52, 0.42, 0.28), ring * 0.4);
+    float spec = pow(max(dot(N, H), 0.0), 18.0) * 0.25;
+    finalColor = rattleCol * diffuse + vec3(spec);
+
+  } else if (uMatType < 0.5) {
+    // 0. BIOME TERRAIN (Tailored for Rainforest, Grassland, Big Swamp & Desert)
+    float n1 = sin(vWorldPos.x * 0.8) * cos(vWorldPos.z * 0.8);
+    float n2 = sin(vWorldPos.x * 2.5 + n1 * 1.5) * cos(vWorldPos.z * 2.5);
+    float n3 = sin(vWorldPos.x * 7.0) * cos(vWorldPos.z * 7.0);
+    float groundDetail = n1 * 0.5 + n2 * 0.35 + n3 * 0.15;
+
+    if (uPatternType > 2.5) {
+      // 3. ARID DESERT SAND DUNES & RIPPLES (NO WATER)
+      float duneRipple = sin(vWorldPos.x * 4.2 + vWorldPos.z * 2.0) * 0.5 + 0.5;
+      vec3 sandBase = vec3(0.86, 0.68, 0.38);
+      vec3 sandShadow = vec3(0.68, 0.50, 0.28);
+      vec3 sandCrest = vec3(0.96, 0.82, 0.52);
+      vec3 groundCol = mix(sandBase, sandShadow, smoothstep(0.3, 0.7, duneRipple));
+      groundCol = mix(groundCol, sandCrest, max(0.0, N.y - 0.72) * 0.35);
+      float spec = pow(max(dot(N, H), 0.0), 28.0) * 0.22; // glittering quartz sand glints
+      finalColor = groundCol * diffuse + vec3(spec);
+    } else if (uPatternType > 1.5) {
+      // 2. VERY BIG SWAMP WITH VERY SMALL CENTRAL ISLAND
+      float distCenter = length(vWorldPos.xz);
+      vec3 islandGrass = vec3(0.32, 0.62, 0.22);
+      vec3 islandMoss = vec3(0.20, 0.44, 0.16);
+      vec3 swampSilt = vec3(0.14, 0.18, 0.12);
+      vec3 groundCol = mix(islandGrass, islandMoss, smoothstep(-0.2, 0.4, groundDetail));
+      if (distCenter > 8.5) {
+        float swampT = smoothstep(8.5, 12.0, distCenter);
+        groundCol = mix(groundCol, swampSilt, swampT);
+      }
+      float spec = pow(max(dot(N, H), 0.0), 16.0) * 0.14;
+      finalColor = groundCol * diffuse + vec3(spec);
+    } else if (uPatternType > 0.5) {
+      // 1. PURE GREEN GRASS & MEADOW (NO WATER)
+      vec3 meadowGrass = vec3(0.34, 0.70, 0.20);
+      vec3 sunlitGrass = vec3(0.50, 0.84, 0.28);
+      vec3 richLawn = vec3(0.24, 0.54, 0.16);
+      vec3 groundCol = mix(meadowGrass, sunlitGrass, smoothstep(-0.2, 0.4, groundDetail));
+      groundCol = mix(groundCol, richLawn, smoothstep(0.3, 0.8, -groundDetail));
+      float spec = pow(max(dot(N, H), 0.0), 14.0) * 0.12;
+      finalColor = groundCol * diffuse + vec3(spec);
+    } else {
+      // 0. RAINFOREST WITH SMALL CROCODILE-MOUTH WIDE SWAMPS & RAIN
+      vec3 lushGrass = vec3(0.30, 0.56, 0.20);
+      vec3 sunlitPatch = vec3(0.46, 0.70, 0.26);
+      vec3 darkMoss = vec3(0.18, 0.36, 0.14);
+      vec3 dampMud = vec3(0.20, 0.15, 0.10);
+      vec3 groundCol = mix(lushGrass, sunlitPatch, smoothstep(-0.2, 0.4, groundDetail));
+      groundCol = mix(groundCol, darkMoss, smoothstep(0.3, 0.8, -groundDetail));
+      if (vWorldPos.y < -0.05) {
+        float mudT = smoothstep(-0.05, -0.25, vWorldPos.y);
+        groundCol = mix(groundCol, dampMud, mudT * 0.90);
+      }
+      float spec = pow(max(dot(N, H), 0.0), 24.0) * 0.25; // wet rain sheen
+      finalColor = groundCol * diffuse + vec3(spec);
+    }
+
+  } else {
+    // FLORA & ROCKS
+    float spec = pow(max(dot(N, H), 0.0), 14.0) * 0.15;
+    finalColor = uBaseColor * diffuse + vec3(spec);
+  }
+
+  // Atmospheric biome fog
+  float dist = length(uCamPos - vWorldPos);
+  float fog = smoothstep(45.0, 95.0, dist);
+  vec3 fogColor = vec3(0.16, 0.28, 0.24); // Rainforest misty drizzle
+  if (uPatternType > 2.5) {
+    fogColor = vec3(0.80, 0.62, 0.40); // Desert amber haze
+  } else if (uPatternType > 1.5) {
+    fogColor = vec3(0.12, 0.24, 0.17); // Big swamp murky fog
+  } else if (uPatternType > 0.5) {
+    fogColor = vec3(0.28, 0.50, 0.36); // Grassland fresh canopy haze
+  }
+  finalColor = mix(finalColor, fogColor, fog * 0.65);
+
+  gl_FragColor = vec4(finalColor, 1.0);
+}
+`;
+
+function createShader(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.error(gl.getShaderInfoLog(s));
+    gl.deleteShader(s);
+    return null;
+  }
+  return s;
+}
+
+const prog = gl.createProgram();
+gl.attachShader(prog, createShader(gl.VERTEX_SHADER, vsSource));
+gl.attachShader(prog, createShader(gl.FRAGMENT_SHADER, fsSource));
+gl.linkProgram(prog);
+gl.useProgram(prog);
+
+const loc = {
+  aPos: gl.getAttribLocation(prog, 'aPos'),
+  aNormal: gl.getAttribLocation(prog, 'aNormal'),
+  aUV: gl.getAttribLocation(prog, 'aUV'),
+  uVP: gl.getUniformLocation(prog, 'uVP'),
+  uModel: gl.getUniformLocation(prog, 'uModel'),
+  uNormalMat: gl.getUniformLocation(prog, 'uNormalMat'),
+  uMatType: gl.getUniformLocation(prog, 'uMatType'),
+  uBaseColor: gl.getUniformLocation(prog, 'uBaseColor'),
+  uBellyColor: gl.getUniformLocation(prog, 'uBellyColor'),
+  uPatternColor: gl.getUniformLocation(prog, 'uPatternColor'),
+  uPatternType: gl.getUniformLocation(prog, 'uPatternType'),
+  uLightDir: gl.getUniformLocation(prog, 'uLightDir'),
+  uCamPos: gl.getUniformLocation(prog, 'uCamPos'),
+  uTime: gl.getUniformLocation(prog, 'uTime'),
+  uSpecularPower: gl.getUniformLocation(prog, 'uSpecularPower'),
+  uSpecularStrength: gl.getUniformLocation(prog, 'uSpecularStrength'),
+  uPupilSlit: gl.getUniformLocation(prog, 'uPupilSlit')
+};
+
+// -------------------------------------------------------------
+// LINEAR ALGEBRA & TRANSFORMATION HELPERS
+// -------------------------------------------------------------
+function matMul(a, b) {
+  const o = new Float32Array(16);
+  for (let c = 0; c < 4; c++) {
+    for (let r = 0; r < 4; r++) {
+      o[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
+    }
+  }
+  return o;
+}
+
+function matPerspective(fovy, aspect, near, far) {
+  const f = 1.0 / Math.tan(fovy / 2), o = new Float32Array(16);
+  o[0] = f / aspect; o[5] = f;
+  o[10] = (far + near) / (near - far);
+  o[11] = -1;
+  o[14] = (2 * far * near) / (near - far);
+  return o;
+}
+
+function matLookAt(eye, center, up = [0, 1, 0]) {
+  const z = norm(sub(eye, center));
+  const x = norm(cross(up, z));
+  const y = cross(z, x);
+  const o = new Float32Array(16);
+  o[0] = x[0]; o[1] = y[0]; o[2] = z[0];
+  o[4] = x[1]; o[5] = y[1]; o[6] = z[1];
+  o[8] = x[2]; o[9] = y[2]; o[10] = z[2];
+  o[12] = -dot(x, eye); o[13] = -dot(y, eye); o[14] = -dot(z, eye); o[15] = 1;
+  return o;
+}
+
+function matIdentity() {
+  const o = new Float32Array(16);
+  o[0] = o[5] = o[10] = o[15] = 1;
+  return o;
+}
+
+function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+function add(a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; }
+function dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+function norm(a) { const l = Math.hypot(...a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
+
+function normalMatFromModel(m) {
+  const a00 = m[0], a01 = m[1], a02 = m[2];
+  const a10 = m[4], a11 = m[5], a12 = m[6];
+  const a20 = m[8], a21 = m[9], a22 = m[10];
+  const b01 = a22 * a11 - a12 * a21;
+  const b11 = -a22 * a10 + a12 * a20;
+  const b21 = a21 * a10 - a11 * a20;
+  let det = a00 * b01 + a01 * b11 + a02 * b21;
+  if (!det) return new Float32Array([1,0,0, 0,1,0, 0,0,1]);
+  det = 1.0 / det;
+  return new Float32Array([
+    b01 * det,
+    (-a22 * a01 + a02 * a21) * det,
+    (a12 * a01 - a02 * a11) * det,
+    b11 * det,
+    (a22 * a00 - a02 * a20) * det,
+    (-a12 * a00 + a02 * a10) * det,
+    b21 * det,
+    (-a21 * a00 + a01 * a20) * det,
+    (a11 * a00 - a01 * a10) * det
+  ]);
+}
+
+// -------------------------------------------------------------
+// PROCEDURAL GEOMETRY GENERATORS
+// -------------------------------------------------------------
+function createBufferMesh(v, n, uv, idx) {
+  const vb = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.STATIC_DRAW);
+
+  const nb = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, nb);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(n), gl.STATIC_DRAW);
+
+  const ub = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, ub);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.STATIC_DRAW);
+
+  const ib = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+
+  return { vb, nb, ub, ib, count: idx.length };
+}
+
+function generateSphereMesh(lat = 12, lon = 16) {
+  const v = [], n = [], uv = [], idx = [];
+  for (let y = 0; y <= lat; y++) {
+    const a = (y * Math.PI) / lat;
+    for (let x = 0; x <= lon; x++) {
+      const b = (x * 2 * Math.PI) / lon;
+      const X = Math.sin(a) * Math.cos(b), Y = Math.cos(a), Z = Math.sin(a) * Math.sin(b);
+      v.push(X, Y, Z);
+      n.push(X, Y, Z);
+      uv.push(x / lon, y / lat);
+    }
+  }
+  for (let y = 0; y < lat; y++) {
+    for (let x = 0; x < lon; x++) {
+      const i = y * (lon + 1) + x;
+      idx.push(i, i + 1, i + lon + 1, i + 1, i + lon + 2, i + lon + 1);
+    }
+  }
+  return createBufferMesh(v, n, uv, idx);
+}
+const sphereMesh = generateSphereMesh(12, 16);
+
+function generateCylinderMesh(sides = 16) {
+  const v = [], n = [], uv = [], idx = [];
+  // 3 height rings:
+  // Ring 0: y = -0.5 (subterranean root base deep beneath soil)
+  // Ring 1: y = 0.0 (ground surface with flared buttress roots r = 1.55)
+  // Ring 2: y = 1.0 (canopy height r = 1.0)
+  for (let rIdx = 0; rIdx < 3; rIdx++) {
+    const yVal = rIdx === 0 ? -0.5 : rIdx === 1 ? 0.0 : 1.0;
+    const rVal = rIdx === 0 ? 1.7 : rIdx === 1 ? 1.55 : 1.0;
+    for (let i = 0; i <= sides; i++) {
+      const a = (i / sides) * Math.PI * 2;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      v.push(ca * rVal, yVal, sa * rVal);
+      n.push(ca, 0, sa);
+      uv.push(i / sides, (yVal + 0.5) / 1.5);
+    }
+  }
+  for (let rIdx = 0; rIdx < 2; rIdx++) {
+    const o1 = rIdx * (sides + 1);
+    const o2 = (rIdx + 1) * (sides + 1);
+    for (let i = 0; i < sides; i++) {
+      const a = o1 + i, b = o1 + i + 1;
+      const c = o2 + i, d = o2 + i + 1;
+      // Double-sided faces to guarantee 100% solidity from all angles
+      idx.push(a, b, d, a, d, c);
+      idx.push(a, d, b, a, c, d);
+    }
+  }
+  // Solid bottom cap disk at y = -0.5
+  const bCenter = v.length / 3;
+  v.push(0, -0.5, 0); n.push(0, -1, 0); uv.push(0.5, 0.5);
+  for (let i = 0; i < sides; i++) {
+    idx.push(bCenter, i + 1, i);
+    idx.push(bCenter, i, i + 1);
+  }
+  // Solid top cap disk at y = 1.0
+  const tCenter = v.length / 3;
+  const topRing = 2 * (sides + 1);
+  v.push(0, 1.0, 0); n.push(0, 1, 0); uv.push(0.5, 0.5);
+  for (let i = 0; i < sides; i++) {
+    idx.push(tCenter, topRing + i, topRing + i + 1);
+    idx.push(tCenter, topRing + i + 1, topRing + i);
+  }
+  return createBufferMesh(v, n, uv, idx);
+}
+const cylinderMesh = generateCylinderMesh(16);
+
+function generateFernMesh() {
+  const v = [], n = [], uv = [], idx = [];
+  const numFronds = 6;
+  for (let f = 0; f < numFronds; f++) {
+    const a = (f / numFronds) * Math.PI * 2;
+    const ca = Math.cos(a), sa = Math.sin(a);
+    const sideA = a + Math.PI * 0.5;
+    const cSide = Math.cos(sideA) * 0.16, sSide = Math.sin(sideA) * 0.16;
+    const baseIdx = v.length / 3;
+    v.push(
+      0, 0.02, 0,
+      ca * 0.55 + cSide, 0.22, sa * 0.55 + sSide,
+      ca * 0.55 - cSide, 0.22, sa * 0.55 - sSide,
+      ca * 1.05, 0.05, sa * 1.05
+    );
+    n.push(0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0);
+    uv.push(0, 0, 0.5, 1, 0.5, 0, 1, 0.5);
+    // Double-sided faces so fronds are visible from both sides
+    idx.push(baseIdx, baseIdx + 1, baseIdx + 2, baseIdx + 1, baseIdx + 3, baseIdx + 2);
+    idx.push(baseIdx, baseIdx + 2, baseIdx + 1, baseIdx + 1, baseIdx + 2, baseIdx + 3);
+  }
+  return createBufferMesh(v, n, uv, idx);
+}
+const fernMesh = generateFernMesh();
+
+// -------------------------------------------------------------
+// EXPANDED JUNGLE TERRAIN & RIVER HEIGHTMAP
+// Playable reserve: [-48, 48] x [-48, 48] (~9,200+ m²)
+// Visible panoramic horizon: [-110, 110] x [-110, 110]
+// -------------------------------------------------------------
+const WORLD_SIZE = 96.0;
+const HALF_WORLD = 48.0;
+const TERRAIN_SIZE = 220.0;
+const HALF_TERRAIN = 110.0;
+
+// Small crocodile-mouth wide swamps (~1.8m to 2.4m wide) for King Cobra Rainforest
+const crocSwamps = [
+  { x: 10.0, z: 8.0, r: 1.10 },
+  { x: -14.0, z: 18.0, r: 0.95 },
+  { x: 22.0, z: -15.0, r: 1.15 },
+  { x: -18.0, z: -20.0, r: 1.00 },
+  { x: 5.0, z: -28.0, r: 1.10 },
+  { x: -28.0, z: 6.0, r: 0.95 },
+  { x: 28.0, z: 24.0, r: 1.20 },
+  { x: 0.0, z: -14.0, r: 1.05 },
+  { x: -8.0, z: 32.0, r: 1.15 },
+  { x: 18.0, z: -6.0, r: 1.00 },
+  { x: 32.0, z: -22.0, r: 1.10 },
+  { x: -22.0, z: -35.0, r: 1.05 }
+];
+
+function getRiverCenter(z) {
+  return Math.sin(z * 0.055) * 14.0 + Math.cos(z * 0.12) * 4.0;
+}
+
+function getTerrainHeight(x, z) {
+  const modeObj = (typeof modes !== 'undefined' && modes[selectedMode]) ? modes[selectedMode] : null;
+  const bType = modeObj?.biomeType || 'rainforest';
+
+  if (bType === 'rainforest') {
+    // Mode 0: King Cobra Rainforest with small crocodile-mouth wide swamps (~2m)
+    let y = Math.sin(x * 0.12) * Math.cos(z * 0.12) * 0.18;
+    for (let i = 0; i < crocSwamps.length; i++) {
+      const sw = crocSwamps[i];
+      const d = Math.hypot(x - sw.x, z - sw.z);
+      if (d < sw.r * 1.5) {
+        const t = d / (sw.r * 1.5);
+        y -= 0.32 * (1.0 - t * t);
+      }
+    }
+    return y;
+  }
+
+  if (bType === 'grassland') {
+    // Mode 1: California Kingsnake - NO WATER, only trees and green grass!
+    return Math.sin(x * 0.08) * 0.42 + Math.cos(z * 0.08) * 0.42 + Math.sin(x * 0.22 + z * 0.18) * 0.12;
+  }
+
+  if (bType === 'bigswamp') {
+    // Mode 2: King Rat Snake - A VERY BIG SWAMP, A VERY SMALL ISLAND!
+    const distCenter = Math.hypot(x, z);
+    const islandR = 9.0;
+    if (distCenter < islandR) {
+      const t = distCenter / islandR;
+      return 0.32 * (1.0 - t * t); // Small island mound above water
+    } else if (distCenter < islandR + 3.0) {
+      const t = (distCenter - islandR) / 3.0;
+      return 0.32 * (1.0 - t) - 0.38 * t; // Island shore bank
+    } else {
+      return -0.38 + Math.sin(x * 0.18) * 0.05 + Math.cos(z * 0.18) * 0.05; // Big swamp floor underwater
+    }
+  }
+
+  if (bType === 'desert') {
+    // Mode 3: King Brown Snake & Young Inland Taipan - DESERT!
+    return Math.sin(x * 0.065 + z * 0.04) * 0.85 + Math.cos(x * 0.12 - z * 0.10) * 0.38 + Math.sin(x * 0.28) * 0.12;
+  }
+
+  return Math.sin(x * 0.15) * 0.22 + Math.cos(z * 0.15) * 0.22;
+}
+
+function generateTerrainMesh() {
+  const divs = 90;
+  const step = TERRAIN_SIZE / divs;
+  const v = [], n = [], uv = [], idx = [];
+
+  for (let iz = 0; iz <= divs; iz++) {
+    const z = -HALF_TERRAIN + iz * step;
+    for (let ix = 0; ix <= divs; ix++) {
+      const x = -HALF_TERRAIN + ix * step;
+      const y = getTerrainHeight(x, z);
+      v.push(x, y, z);
+      const eps = 0.2;
+      const hL = getTerrainHeight(x - eps, z);
+      const hR = getTerrainHeight(x + eps, z);
+      const hD = getTerrainHeight(x, z - eps);
+      const hU = getTerrainHeight(x, z + eps);
+      const normal = norm([(hL - hR) / (2 * eps), 1.0, (hD - hU) / (2 * eps)]);
+      n.push(...normal);
+      uv.push(ix / divs, iz / divs);
+    }
+  }
+
+  for (let iz = 0; iz < divs; iz++) {
+    for (let ix = 0; ix < divs; ix++) {
+      const i = iz * (divs + 1) + ix;
+      idx.push(i, i + divs + 1, i + 1, i + 1, i + divs + 1, i + divs + 2);
+      idx.push(i, i + 1, i + divs + 1, i + 1, i + divs + 2, i + divs + 1);
+    }
+  }
+  return createBufferMesh(v, n, uv, idx);
+}
+
+function generateWaterMesh() {
+  const modeObj = (typeof modes !== 'undefined' && modes[selectedMode]) ? modes[selectedMode] : null;
+  const bType = modeObj?.biomeType || 'rainforest';
+  const v = [], n = [], uv = [], idx = [];
+
+  if (modeObj?.noWater || bType === 'grassland' || bType === 'desert') {
+    // California Kingsnake (grassland) & King Brown Snake (desert) have NO water!
+    return createBufferMesh([0, -100, 0], [0, 1, 0], [0, 0], []);
+  }
+
+  if (bType === 'rainforest') {
+    // Mode 0: King Cobra Rainforest - small swamps (crocodile mouth wide ~2m)
+    for (let s = 0; s < crocSwamps.length; s++) {
+      const sw = crocSwamps[s];
+      const centerIdx = v.length / 3;
+      v.push(sw.x, -0.06, sw.z);
+      n.push(0, 1, 0);
+      uv.push(0.5, 0.5);
+      const segs = 16;
+      for (let j = 0; j <= segs; j++) {
+        const a = (j / segs) * Math.PI * 2;
+        const wx = sw.x + Math.cos(a) * sw.r;
+        const wz = sw.z + Math.sin(a) * sw.r;
+        v.push(wx, -0.06, wz);
+        n.push(0, 1, 0);
+        uv.push(0.5 + Math.cos(a) * 0.5, 0.5 + Math.sin(a) * 0.5);
+      }
+      for (let j = 0; j < segs; j++) {
+        idx.push(centerIdx, centerIdx + j + 1, centerIdx + j + 2);
+        idx.push(centerIdx, centerIdx + j + 2, centerIdx + j + 1);
+      }
+    }
+    return createBufferMesh(v, n, uv, idx);
+  }
+
+  if (bType === 'bigswamp') {
+    // Mode 2: King Rat Snake - A VERY BIG SWAMP spanning the entire reserve!
+    const divs = 60;
+    const step = TERRAIN_SIZE / divs;
+    for (let iz = 0; iz <= divs; iz++) {
+      const z = -HALF_TERRAIN + iz * step;
+      for (let ix = 0; ix <= divs; ix++) {
+        const x = -HALF_TERRAIN + ix * step;
+        v.push(x, 0.0, z); // Water plane at y = 0.0
+        n.push(0, 1, 0);
+        uv.push(ix / divs, iz / divs);
+      }
+    }
+    for (let iz = 0; iz < divs; iz++) {
+      for (let ix = 0; ix < divs; ix++) {
+        const i = iz * (divs + 1) + ix;
+        idx.push(i, i + divs + 1, i + 1, i + 1, i + divs + 1, i + divs + 2);
+        idx.push(i, i + 1, i + divs + 1, i + 1, i + divs + 2, i + divs + 1);
+      }
+    }
+    return createBufferMesh(v, n, uv, idx);
+  }
+
+  return createBufferMesh([0, -100, 0], [0, 1, 0], [0, 0], []);
+}
+
+let terrainMesh = generateTerrainMesh();
+let waterMesh = generateWaterMesh();
+
+function rebuildBiomeMeshes() {
+  terrainMesh = generateTerrainMesh();
+  waterMesh = generateWaterMesh();
+  initJungleLandmarks();
+}
+
+// -------------------------------------------------------------
+// DYNAMIC 3D RAINDROP SYSTEM (TROPICAL RAINFOREST SHOWER)
+// -------------------------------------------------------------
+const NUM_RAINDROPS = 650;
+const rainPositions = new Float32Array(NUM_RAINDROPS * 6);
+let rainVB = null;
+const raindrops = [];
+
+function initRaindrops() {
+  raindrops.length = 0;
+  for (let i = 0; i < NUM_RAINDROPS; i++) {
+    raindrops.push({
+      x: (Math.random() * 2 - 1) * 35.0,
+      y: Math.random() * 16.0,
+      z: (Math.random() * 2 - 1) * 35.0,
+      speed: 16.0 + Math.random() * 6.0,
+      len: 0.45 + Math.random() * 0.25
+    });
+  }
+  if (!rainVB) rainVB = gl.createBuffer();
+}
+initRaindrops();
+
+function updateAndDrawRain(dt, headPos) {
+  const modeObj = (typeof modes !== 'undefined' && modes[selectedMode]) ? modes[selectedMode] : null;
+  if (!modeObj?.hasRain) return;
+
+  for (let i = 0; i < NUM_RAINDROPS; i++) {
+    const d = raindrops[i];
+    d.y -= d.speed * dt;
+    const groundY = getTerrainHeight(d.x, d.z);
+    if (d.y < groundY || d.y < headPos[1] - 4.0) {
+      d.y = headPos[1] + 10.0 + Math.random() * 6.0;
+      d.x = headPos[0] + (Math.random() * 2 - 1) * 28.0;
+      d.z = headPos[2] + (Math.random() * 2 - 1) * 28.0;
+    }
+    const idx = i * 6;
+    rainPositions[idx]     = d.x;
+    rainPositions[idx + 1] = d.y;
+    rainPositions[idx + 2] = d.z;
+    rainPositions[idx + 3] = d.x - 0.03;
+    rainPositions[idx + 4] = d.y - d.len;
+    rainPositions[idx + 5] = d.z - 0.02;
+  }
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, rainVB);
+  gl.bufferData(gl.ARRAY_BUFFER, rainPositions, gl.DYNAMIC_DRAW);
+  gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+
+  gl.uniform1f(loc.uMatType, 6.0);
+  gl.uniform3f(loc.uBaseColor, 0.76, 0.88, 0.98);
+  const idMat = matIdentity();
+  gl.uniformMatrix4fv(loc.uModel, false, idMat);
+  gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(idMat));
+
+  gl.drawArrays(gl.LINES, 0, NUM_RAINDROPS * 2);
+}
+
+// -------------------------------------------------------------
+// DYNAMIC PROCEDURAL SNAKE SPINE & CONTINUOUS ANATOMICAL MESH
+// -------------------------------------------------------------
+const snakeVB = gl.createBuffer();
+const snakeNB = gl.createBuffer();
+const snakeUB = gl.createBuffer();
+const snakeIB = gl.createBuffer();
+const digestionBulges = [];
+
+function drawAnatomicalSnake(points, modeObj, isPrey = false, tonguePhase = 0, preyObj = null) {
+  if (points.length < 3) return;
+
+  const spline = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(points.length - 1, i + 2)];
+    const numSub = 5;
+    for (let k = 0; k < numSub; k++) {
+      const u = k / numSub, u2 = u * u, u3 = u2 * u;
+      spline.push([0, 1, 2].map(d => 0.5 * (
+        (2 * p1[d]) +
+        (-p0[d] + p2[d]) * u +
+        (2 * p0[d] - 5 * p1[d] + 4 * p2[d] - p3[d]) * u2 +
+        (-p0[d] + 3 * p1[d] - 3 * p2[d] + p3[d]) * u3
+      )));
+    }
+  }
+  spline.push(points[points.length - 1]);
+
+  const sides = 14;
+  const v = [], n = [], uv = [], idx = [];
+  const baseGirth = isPrey ? (modeObj.fGirth || 0.24) : (modeObj.scaleGirth || 0.28);
+  const isCobra = isPrey ? (modeObj.fIsCobra || false) : modeObj.isCobra;
+  const isViper = isPrey && (modeObj.isViper || modeObj.isRattler);
+  const isRattler = isPrey && modeObj.isRattler;
+  const isKingRat = !isPrey && modeObj.isKingRatSnake;
+  const isKingBrown = !isPrey && modeObj.isKingBrownSnake;
+  const isTaipan = isPrey && modeObj.isInlandTaipan;
+
+  let eyeAnchorPos = null;
+  let eyeAnchorDir = null;
+  let eyeAnchorSide = null;
+  let eyeAnchorUp = null;
+  let eyeAnchorWidth = 0;
+
+  for (let i = 0; i < spline.length; i++) {
+    const tNorm = i / (spline.length - 1); // 0.0 = snout tip, 1.0 = tail tip
+    const tangent = norm(sub(spline[Math.min(spline.length - 1, i + 1)], spline[Math.max(0, i - 1)]));
+    let side = norm(cross([0, 1, 0], tangent));
+    if (Math.hypot(...side) < 0.01) side = [1, 0, 0];
+    const up = norm(cross(tangent, side));
+
+    let rWidth = baseGirth;
+    let rHeight = baseGirth * 0.85;
+
+    // Anatomical Head Sculpting based on fixed physical spline segments
+    if (i <= 1) {
+      // Snout Tip & Rostral Scute
+      if (isCobra) {
+        // King Cobra: Broad, blunt, flattened elapid snout (not a pointed pencil cone)
+        const f = i / 1.0;
+        rWidth = baseGirth * (0.76 + 0.22 * f);
+        rHeight = baseGirth * (0.46 + 0.16 * f);
+      } else if (isKingBrown) {
+        // King Brown (Mulga): Robust rounded elapid snout
+        rWidth = baseGirth * (0.70 + 0.28 * i);
+        rHeight = baseGirth * (0.50 + 0.22 * i);
+      } else if (isTaipan) {
+        // Young Inland Taipan: Sleek, streamlined elapid snout
+        rWidth = baseGirth * (0.45 + 0.32 * i);
+        rHeight = baseGirth * (0.38 + 0.24 * i);
+      } else if (isViper) {
+        rWidth = baseGirth * (0.42 + 0.35 * i);
+        rHeight = baseGirth * (0.35 + 0.25 * i);
+      } else {
+        rWidth = baseGirth * (0.50 + 0.35 * i);
+        rHeight = baseGirth * (0.42 + 0.25 * i);
+      }
+    } else if (i >= 2 && i <= 4) {
+      // Prefrontal, Supraocular Brow Ridge & Lateral Eye Orbits
+      if (isCobra) {
+        // King Cobra: Wide flattened cranial deck with prominent supraocular ledges
+        rWidth = baseGirth * 1.34;
+        rHeight = baseGirth * 0.72;
+      } else if (isKingBrown) {
+        // King Brown: Broad, heavy cranial deck
+        rWidth = baseGirth * 1.28;
+        rHeight = baseGirth * 0.76;
+      } else if (isTaipan) {
+        // Young Inland Taipan: Sleek, agile cranium
+        rWidth = baseGirth * 1.12;
+        rHeight = baseGirth * 0.70;
+      } else if (isViper) {
+        rWidth = baseGirth * 1.35;
+        rHeight = baseGirth * 0.70;
+      } else {
+        rWidth = baseGirth * 1.15;
+        rHeight = baseGirth * 0.74;
+      }
+      // Reliable Eye Anchor positioned on the lateral cranium orbit
+      if (i === 3 || (!eyeAnchorPos && i === 2)) {
+        eyeAnchorPos = spline[i];
+        eyeAnchorDir = tangent;
+        eyeAnchorSide = side;
+        eyeAnchorUp = up;
+        eyeAnchorWidth = rWidth;
+      }
+    } else if (i >= 5 && i <= 7) {
+      // Temporal Cranium, Cheeks & Venom Glands
+      const cheekFactor = isViper ? 1.55 : isCobra ? 1.36 : isKingBrown ? 1.30 : isKingRat ? 1.20 : 1.12;
+      rWidth = baseGirth * cheekFactor;
+      rHeight = baseGirth * (isCobra ? 0.78 : isKingBrown ? 0.78 : 0.74);
+    } else if (i >= 8 && i <= 11) {
+      // Slender neck right behind cranium
+      const f = (i - 8) / 3.0;
+      rWidth = baseGirth * (1.15 - 0.28 * Math.sin(f * Math.PI * 0.5));
+      rHeight = baseGirth * 0.72;
+    } else if (i >= 12 && i <= 25) {
+      // Cervical Hood (King Cobra & Chinese Cobra flared neck ribs, slight Mulga flair)
+      if (isCobra) {
+        const hoodU = (i - 12) / 13.0;
+        const hoodSpread = Math.sin(hoodU * Math.PI);
+        rWidth = baseGirth * (0.90 + hoodSpread * 1.45);
+        rHeight = baseGirth * (0.75 - hoodSpread * 0.22);
+      } else if (isKingBrown) {
+        const hoodU = (i - 12) / 13.0;
+        const hoodSpread = Math.sin(hoodU * Math.PI);
+        rWidth = baseGirth * (0.94 + hoodSpread * 0.32);
+        rHeight = baseGirth * (0.78 - hoodSpread * 0.08);
+      } else {
+        const f = (i - 12) / 13.0;
+        rWidth = baseGirth * (0.85 + 0.25 * f);
+        rHeight = baseGirth * (0.72 + 0.20 * f);
+      }
+    } else {
+      // Muscular Mid-Body Swell & Gradual Tail Taper
+      const bodyT = (i - 25) / Math.max(1, spline.length - 26);
+      if (bodyT < 0.40) {
+        const f = bodyT / 0.40;
+        rWidth = baseGirth * (1.08 + 0.12 * Math.sin(f * Math.PI));
+        rHeight = baseGirth * (0.92 + 0.10 * Math.sin(f * Math.PI));
+      } else {
+        const f = (bodyT - 0.40) / 0.60;
+        const taper = Math.max(0.06, 1.15 - f * 1.09);
+        rWidth = baseGirth * taper;
+        rHeight = baseGirth * taper * 0.88;
+      }
+    }
+
+    // Dynamic digestion bulge traveling down the snake's body
+    const bulgesList = isPrey ? (preyObj?.bulges || []) : digestionBulges;
+    if (bulgesList.length > 0) {
+      for (let b = 0; b < bulgesList.length; b++) {
+        const bg = bulgesList[b];
+        const distB = Math.abs(tNorm - bg.t);
+        if (distB < 0.08) {
+          const swell = Math.cos((distB / 0.08) * Math.PI * 0.5) * bg.scale;
+          rWidth *= (1.0 + swell);
+          rHeight *= (1.0 + swell * 0.85);
+        }
+      }
+    }
+
+    for (let j = 0; j <= sides; j++) {
+      const a = (j / sides) * Math.PI * 2;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      // Realistic belly flattening (ventral scutes)
+      const vertOffset = sa < 0 ? sa * 0.72 : sa;
+
+      // King Cobra supraocular brow ridge overhang above eye orbit
+      let browLedge = 0;
+      if (isCobra && i >= 2 && i <= 5 && sa > 0.12 && Math.abs(ca) > 0.35) {
+        browLedge = 0.08 * baseGirth;
+      }
+
+      const effWidth = rWidth + browLedge;
+      const normal = norm([
+        side[0] * ca + up[0] * vertOffset,
+        side[1] * ca + up[1] * vertOffset,
+        side[2] * ca + up[2] * vertOffset
+      ]);
+
+      const px = spline[i][0] + side[0] * (ca * effWidth) + up[0] * (vertOffset * rHeight);
+      const py = spline[i][1] + side[1] * (ca * effWidth) + up[0] * (vertOffset * rHeight);
+      const pz = spline[i][2] + side[2] * (ca * effWidth) + up[2] * (vertOffset * rHeight);
+
+      v.push(px, py, pz);
+      n.push(...normal);
+      uv.push(tNorm, j / sides);
+    }
+  }
+
+  for (let i = 0; i < spline.length - 1; i++) {
+    for (let j = 0; j < sides; j++) {
+      const a = i * (sides + 1) + j;
+      const b = a + 1;
+      const c = (i + 1) * (sides + 1) + j;
+      const d = c + 1;
+      idx.push(a, b, c, b, d, c);
+    }
+  }
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, snakeVB);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(loc.aPos);
+  gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, snakeNB);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(n), gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(loc.aNormal);
+  gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, snakeUB);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(loc.aUV);
+  gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, snakeIB);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.DYNAMIC_DRAW);
+
+  const baseC = isPrey ? modeObj.fBase : modeObj.pBase;
+  const bellyC = isPrey ? modeObj.fBelly : modeObj.pBelly;
+  const patternC = isPrey ? modeObj.fPattern : modeObj.pPattern;
+  const patType = isPrey ? modeObj.fPatternType : modeObj.patternType;
+
+  gl.uniform1f(loc.uMatType, 1.0); // Snake body & seamless head
+  gl.uniform3fv(loc.uBaseColor, baseC);
+  gl.uniform3fv(loc.uBellyColor, bellyC);
+  gl.uniform3fv(loc.uPatternColor, patternC);
+  gl.uniform1f(loc.uPatternType, patType);
+  gl.uniform1f(loc.uSpecularPower, isRattler ? 20.0 : 45.0);
+  gl.uniform1f(loc.uSpecularStrength, isRattler ? 0.35 : 0.65);
+  gl.uniform1f(loc.uPupilSlit, (isPrey ? modeObj.fPupilSlit : modeObj.pupilSlit) ? 1.0 : 0.0);
+
+  const idMat = matIdentity();
+  gl.uniformMatrix4fv(loc.uModel, false, idMat);
+  gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(idMat));
+  gl.drawElements(gl.TRIANGLES, idx.length, gl.UNSIGNED_SHORT, 0);
+
+  // Anatomical Eyes placed proud of cranium with forward-lateral orientation
+  if (eyeAnchorPos) {
+    const eyeColor = isPrey ? modeObj.fEyeColor : modeObj.eyeColor;
+    gl.uniform1f(loc.uMatType, 3.0); // Eye material
+    gl.uniform3fv(loc.uPatternColor, eyeColor);
+    gl.uniform3fv(loc.uBaseColor, [0.03, 0.03, 0.03]);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.vb);
+    gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.nb);
+    gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.ub);
+    gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereMesh.ib);
+
+    gl.disable(gl.CULL_FACE);
+
+    for (const s of [-1, 1]) {
+      const eyeR = baseGirth * 0.25;
+      // Position eye slightly proud of lateral cranium orbit
+      const eyePos = [
+        eyeAnchorPos[0] + eyeAnchorSide[0] * (s * eyeAnchorWidth * 0.98) + eyeAnchorUp[0] * (eyeR * 0.48) + eyeAnchorDir[0] * (eyeR * 0.15),
+        eyeAnchorPos[1] + eyeAnchorSide[1] * (s * eyeAnchorWidth * 0.98) + eyeAnchorUp[1] * (eyeR * 0.48) + eyeAnchorDir[1] * (eyeR * 0.15),
+        eyeAnchorPos[2] + eyeAnchorSide[2] * (s * eyeAnchorWidth * 0.98) + eyeAnchorUp[2] * (eyeR * 0.48) + eyeAnchorDir[2] * (eyeR * 0.15)
+      ];
+
+      // Orient eye forward-laterally
+      const fwd = norm([
+        eyeAnchorSide[0] * s * 0.85 + eyeAnchorDir[0] * 0.52,
+        eyeAnchorSide[1] * s * 0.85 + eyeAnchorDir[1] * 0.52,
+        eyeAnchorSide[2] * s * 0.85 + eyeAnchorDir[2] * 0.52
+      ]);
+      const upV = [eyeAnchorUp[0], eyeAnchorUp[1], eyeAnchorUp[2]];
+      const rightV = norm(cross(upV, fwd));
+
+      // Note: In sphereMesh, pupil UV (0.5, 0.5) is at [-1, 0, 0] in model space.
+      // So model [-1, 0, 0] maps to fwd -> model [1, 0, 0] maps to -fwd.
+      const mEye = new Float32Array([
+        -fwd[0] * eyeR, -fwd[1] * eyeR, -fwd[2] * eyeR, 0,
+        upV[0] * eyeR,  upV[1] * eyeR,  upV[2] * eyeR,  0,
+        rightV[0] * eyeR, rightV[1] * eyeR, rightV[2] * eyeR, 0,
+        eyePos[0], eyePos[1], eyePos[2], 1
+      ]);
+      gl.uniformMatrix4fv(loc.uModel, false, mEye);
+      gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mEye));
+      gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+    }
+    gl.enable(gl.CULL_FACE);
+  }
+
+  // Forked Tongue darting from snout
+  if (tonguePhase > 0.05) {
+    const snoutPos = spline[0];
+    const snoutDir = norm(sub(spline[0], spline[Math.min(spline.length - 1, 4)]));
+    let snoutSide = norm(cross([0, 1, 0], snoutDir));
+    if (Math.hypot(...snoutSide) < 0.01) snoutSide = [1, 0, 0];
+    const snoutUp = norm(cross(snoutDir, snoutSide));
+    drawForkedTongue(snoutPos, snoutDir, snoutSide, snoutUp, baseGirth, tonguePhase);
+  }
+
+  // Timber Rattlesnake Segmented Keratin Rattle at Tail
+  if (isRattler) {
+    drawRattlesnakeRattle(spline);
+  }
+}
+
+function drawRattlesnakeRattle(spline) {
+  const tailEnd = spline[spline.length - 1];
+  const tailDir = norm(sub(tailEnd, spline[spline.length - 4]));
+  gl.uniform1f(loc.uMatType, 8.0); // Rattle material
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.vb);
+  gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.nb);
+  gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.ub);
+  gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereMesh.ib);
+
+  for (let b = 0; b < 4; b++) {
+    const d = b * 0.12;
+    const r = 0.12 - b * 0.018;
+    const buzz = Math.sin(gameTime * 75.0 + b) * 0.025;
+    const mButton = new Float32Array([
+      r, 0, 0, 0,
+      0, r * 0.8, 0, 0,
+      0, 0, r, 0,
+      tailEnd[0] + tailDir[0] * d + buzz, tailEnd[1] + tailDir[1] * d + 0.04, tailEnd[2] + tailDir[2] * d + buzz, 1
+    ]);
+    gl.uniformMatrix4fv(loc.uModel, false, mButton);
+    gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mButton));
+    gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+}
+
+function drawForkedTongue(pos, dir, side, up, girth, phase) {
+  const extension = Math.sin(phase * Math.PI) * (girth * 2.2);
+  const verticalFlutter = Math.sin(phase * Math.PI * 4.0) * (girth * 0.45);
+
+  const tongueBase = pos;
+  const tongueFork = [
+    pos[0] + dir[0] * extension,
+    pos[1] + dir[1] * extension + up[1] * verticalFlutter,
+    pos[2] + dir[2] * extension
+  ];
+
+  const tipSpread = girth * 0.28;
+  const tipLen = girth * 0.70;
+  const tipL = [
+    tongueFork[0] + dir[0] * tipLen + side[0] * tipSpread,
+    tongueFork[1] + dir[1] * tipLen + up[1] * (verticalFlutter * 1.2),
+    tongueFork[2] + dir[2] * tipLen + side[2] * tipSpread
+  ];
+  const tipR = [
+    tongueFork[0] + dir[0] * tipLen - side[0] * tipSpread,
+    tongueFork[1] + dir[1] * tipLen + up[1] * (verticalFlutter * 1.2),
+    tongueFork[2] + dir[2] * tipLen - side[2] * tipSpread
+  ];
+
+  const v = [
+    ...tongueBase, ...tongueFork,
+    ...tongueFork, ...tipL,
+    ...tongueFork, ...tipR
+  ];
+  const n = [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0];
+  const uv = [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0];
+  const idx = [0, 1, 2, 3, 4, 5];
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, snakeVB);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.DYNAMIC_DRAW);
+  gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, snakeNB);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(n), gl.DYNAMIC_DRAW);
+  gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, snakeUB);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.DYNAMIC_DRAW);
+  gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, snakeIB);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.DYNAMIC_DRAW);
+
+  gl.uniform1f(loc.uMatType, 4.0); // Tongue material
+  const idMat = matIdentity();
+  gl.uniformMatrix4fv(loc.uModel, false, idMat);
+  gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(idMat));
+  gl.lineWidth(3);
+  gl.drawElements(gl.LINES, 6, gl.UNSIGNED_SHORT, 0);
+}
+
+// -------------------------------------------------------------
+// JUNGLE FAUNA: REALISTIC AMPHIBIANS (Frogs around river)
+// -------------------------------------------------------------
+const frogSpecies = [
+  { name: 'Red-eyed tree frog', skin: [0.22, 0.68, 0.28], belly: [0.92, 0.94, 0.85], iris: [0.88, 0.22, 0.18], flank: [0.18, 0.35, 0.72] },
+  { name: 'Golden poison frog', skin: [0.96, 0.82, 0.16], belly: [0.88, 0.75, 0.20], iris: [0.12, 0.10, 0.08], flank: [0.15, 0.18, 0.22] },
+  { name: 'Amazon milk frog', skin: [0.42, 0.68, 0.70], belly: [0.90, 0.92, 0.90], iris: [0.90, 0.82, 0.25], flank: [0.24, 0.30, 0.32] },
+  { name: 'Rainforest harlequin', skin: [0.15, 0.16, 0.18], belly: [0.85, 0.85, 0.85], iris: [0.95, 0.45, 0.12], flank: [0.92, 0.38, 0.12] }
+];
+
+function drawRealisticFrog(frog, t) {
+  const spec = frogSpecies[frog.speciesIdx % 4];
+  const hop = Math.max(0, Math.sin(t * 3.5 + frog.speciesIdx * 1.7)) * 0.18;
+  const y = getTerrainHeight(frog.x, frog.z) + 0.12 + hop;
+
+  const mBody = new Float32Array([
+    0.22, 0, 0, 0,
+    0, 0.14, 0, 0,
+    0, 0, 0.26, 0,
+    frog.x, y, frog.z, 1
+  ]);
+
+  gl.uniform1f(loc.uMatType, 6.0);
+  gl.uniform3fv(loc.uBaseColor, spec.skin);
+  gl.uniformMatrix4fv(loc.uModel, false, mBody);
+  gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mBody));
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.vb);
+  gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.nb);
+  gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.ub);
+  gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereMesh.ib);
+  gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+
+  // Hind legs folded under body
+  for (const s of [-1, 1]) {
+    const mLeg = new Float32Array([
+      0.08, 0, 0, 0,
+      0, 0.06, 0, 0,
+      0, 0, 0.16, 0,
+      frog.x + s * 0.18, y - 0.02, frog.z + 0.08, 1
+    ]);
+    gl.uniform3fv(loc.uBaseColor, spec.flank);
+    gl.uniformMatrix4fv(loc.uModel, false, mLeg);
+    gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mLeg));
+    gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+
+  // Realistic Frog Eyes
+  for (const s of [-1, 1]) {
+    const mEye = new Float32Array([
+      0.07, 0, 0, 0,
+      0, 0.08, 0, 0,
+      0, 0, 0.07, 0,
+      frog.x + s * 0.11, y + 0.11, frog.z - 0.10, 1
+    ]);
+    gl.uniform3fv(loc.uBaseColor, spec.iris);
+    gl.uniformMatrix4fv(loc.uModel, false, mEye);
+    gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mEye));
+    gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+}
+
+// -------------------------------------------------------------
+// JUNGLE SCENERY & NATURAL LANDMARKS GENERATION
+// -------------------------------------------------------------
+const jungleTrees = [];
+const jungleRocks = [];
+const fallenLogs = [];
+const bambooStalks = [];
+const groundFerns = [];
+const desertCacti = [];
+
+function initJungleLandmarks() {
+  jungleTrees.length = 0;
+  jungleRocks.length = 0;
+  fallenLogs.length = 0;
+  bambooStalks.length = 0;
+  groundFerns.length = 0;
+  desertCacti.length = 0;
+
+  const modeObj = (typeof modes !== 'undefined' && modes[selectedMode]) ? modes[selectedMode] : null;
+  const bType = modeObj?.biomeType || 'rainforest';
+
+  if (bType === 'desert') {
+    // ---------------------------------------------------------
+    // DESERT LANDMARKS: Red sandstone bluffs, boulders, bleached logs, desert shrubs (NO water)
+    // ---------------------------------------------------------
+    // 1. Weathered Desert Sandstone Bluffs & Boulders
+    for (let i = 0; i < 60; i++) {
+      const x = Math.sin(i * 17.31) * (HALF_WORLD - 6.0);
+      const z = Math.cos(i * 11.19) * (HALF_WORLD - 6.0);
+      if (Math.hypot(x, z) < 12.0) continue;
+      const y = getTerrainHeight(x, z);
+      jungleRocks.push({
+        x, y: y + 0.35, z,
+        sx: 0.8 + (i % 4) * 0.5,
+        sy: 0.6 + (i % 3) * 0.45,
+        sz: 0.9 + (i % 5) * 0.4,
+        color: (i % 2 === 0) ? [0.78, 0.44, 0.24] : [0.68, 0.36, 0.20] // Red sandstone
+      });
+    }
+
+    // 2. Bleached Sun-baked Driftwood Logs
+    for (let i = 0; i < 18; i++) {
+      const x = Math.sin(i * 4.2) * 34.0;
+      const z = Math.cos(i * 3.7) * 34.0;
+      if (Math.hypot(x, z) < 12.0) continue;
+      const y = getTerrainHeight(x, z);
+      fallenLogs.push({
+        x, y: y + 0.25, z,
+        angle: i * 0.85,
+        len: 2.8 + (i % 3) * 1.2,
+        r: 0.38
+      });
+    }
+
+    // 3. Desert Creosote, Yucca & Agave Shrubs
+    for (let i = 0; i < 75; i++) {
+      const fx = Math.sin(i * 9.3) * (HALF_WORLD - 8.0);
+      const fz = Math.cos(i * 13.7) * (HALF_WORLD - 8.0);
+      if (Math.hypot(fx, fz) < 7.0) continue;
+      const y = getTerrainHeight(fx, fz);
+      groundFerns.push({
+        x: fx, y: y + 0.10, z: fz,
+        sx: 0.55 + (i % 3) * 0.25,
+        sy: 0.16 + (i % 2) * 0.08,
+        sz: 0.55 + (i % 3) * 0.25,
+        color: (i % 2 === 0) ? [0.65, 0.68, 0.36] : [0.74, 0.60, 0.30] // Arid dry sage/gold
+      });
+    }
+
+    // 4. Towering Saguaro Cacti with Authentic Branched Upward Arms
+    for (let i = 0; i < 42; i++) {
+      const a = i * 2.3999;
+      const r = 8.5 + (i % 7) * 5.2 + ((i * 3) % 8);
+      const x = Math.cos(a) * Math.min(HALF_WORLD - 5.0, r);
+      const z = Math.sin(a) * Math.min(HALF_WORLD - 5.0, r);
+      if (Math.hypot(x, z) < 7.5) continue; // Keep player start area clear
+      const y = getTerrainHeight(x, z);
+      const height = 3.6 + (i % 4) * 0.9;
+      const rStem = 0.28 + (i % 3) * 0.05;
+      const hasLeftArm = (i % 2 === 0);
+      const hasRightArm = (i % 3 === 0);
+      const armRot = (i * 1.37) % (Math.PI * 2);
+
+      const cosL = Math.cos(armRot), sinL = Math.sin(armRot);
+      const armLenL = 0.85 + (i % 2) * 0.35;
+      const armUpL = 1.3 + (i % 3) * 0.5;
+      const armPosLY = y + (1.6 + (i % 2) * 0.7);
+      const armPosLX = x + cosL * armLenL;
+      const armPosLZ = z + sinL * armLenL;
+      const elbowMidLX = x + cosL * (armLenL * 0.5);
+      const elbowMidLZ = z + sinL * (armLenL * 0.5);
+      const elbowScaleLX = Math.abs(cosL) * (armLenL * 0.55) + 0.18;
+      const elbowScaleLZ = Math.abs(sinL) * (armLenL * 0.55) + 0.18;
+
+      const rotR = armRot + 2.4;
+      const cosR = Math.cos(rotR), sinR = Math.sin(rotR);
+      const armLenR = 0.80 + ((i + 1) % 2) * 0.30;
+      const armUpR = 1.2 + ((i + 1) % 3) * 0.5;
+      const armPosRY = y + (1.9 + ((i + 1) % 2) * 0.6);
+      const armPosRX = x + cosR * armLenR;
+      const armPosRZ = z + sinR * armLenR;
+      const elbowMidRX = x + cosR * (armLenR * 0.5);
+      const elbowMidRZ = z + sinR * (armLenR * 0.5);
+      const elbowScaleRX = Math.abs(cosR) * (armLenR * 0.55) + 0.18;
+      const elbowScaleRZ = Math.abs(sinR) * (armLenR * 0.55) + 0.18;
+
+      desertCacti.push({
+        type: 'saguaro',
+        x, y, z,
+        height,
+        rStem,
+        hasLeftArm,
+        hasRightArm,
+        armPosLX, armPosLY, armPosLZ, armUpL, elbowMidLX, elbowMidLZ, elbowScaleLX, elbowScaleLZ,
+        armPosRX, armPosRY, armPosRZ, armUpR, elbowMidRX, elbowMidRZ, elbowScaleRX, elbowScaleRZ,
+        color: (i % 3 === 0) ? [0.26, 0.44, 0.22] : (i % 3 === 1) ? [0.29, 0.47, 0.25] : [0.23, 0.40, 0.19]
+      });
+    }
+
+    // 5. Giant Perimeter Saguaro Boundary Ring (Replacing rainforest trees at desert edge!)
+    for (let i = 0; i < 36; i++) {
+      const a = (i / 36) * Math.PI * 2;
+      const distRing = HALF_WORLD - 2.5 + (i % 3) * 1.5;
+      const px = Math.cos(a) * distRing;
+      const pz = Math.sin(a) * distRing;
+      const py = getTerrainHeight(px, pz);
+      const height = 5.2 + (i % 3) * 1.2;
+      const rStem = 0.38 + (i % 2) * 0.08;
+      const armRot = a + Math.PI * 0.5;
+      const cosL = Math.cos(armRot), sinL = Math.sin(armRot);
+      const armLenL = 1.1;
+      const armUpL = 1.8;
+      const armPosLY = py + 2.2;
+      const armPosLX = px + cosL * armLenL;
+      const armPosLZ = pz + sinL * armLenL;
+      const elbowMidLX = px + cosL * 0.55;
+      const elbowMidLZ = pz + sinL * 0.55;
+      const elbowScaleLX = Math.abs(cosL) * 0.6 + 0.2;
+      const elbowScaleLZ = Math.abs(sinL) * 0.6 + 0.2;
+
+      desertCacti.push({
+        type: 'saguaro',
+        x: px, y: py, z: pz,
+        height,
+        rStem,
+        hasLeftArm: true,
+        hasRightArm: false,
+        armPosLX, armPosLY, armPosLZ, armUpL, elbowMidLX, elbowMidLZ, elbowScaleLX, elbowScaleLZ,
+        color: [0.25, 0.42, 0.21]
+      });
+    }
+
+    // 6. Plump Golden Barrel Cacti with Bright Yellow Apex Blossoms
+    for (let i = 0; i < 48; i++) {
+      const x = Math.sin(i * 13.7) * (HALF_WORLD - 7.0);
+      const z = Math.cos(i * 19.3) * (HALF_WORLD - 7.0);
+      if (Math.hypot(x, z) < 6.0) continue;
+      const y = getTerrainHeight(x, z);
+      const r = 0.38 + (i % 4) * 0.12;
+      desertCacti.push({
+        type: 'barrel',
+        x, y: y + r * 0.65, z,
+        r,
+        color: (i % 2 === 0) ? [0.30, 0.48, 0.24] : [0.34, 0.52, 0.26]
+      });
+    }
+
+    // 7. Prickly Pear Succulent Pad Clusters with Desert Flower Buds
+    for (let i = 0; i < 35; i++) {
+      const a = i * 2.85;
+      const r = 8.5 + (i % 6) * 5.8;
+      const x = Math.cos(a) * Math.min(HALF_WORLD - 7.0, r);
+      const z = Math.sin(a) * Math.min(HALF_WORLD - 7.0, r);
+      if (Math.hypot(x, z) < 6.5) continue;
+      const y = getTerrainHeight(x, z);
+      const scale = 0.70 + (i % 3) * 0.22;
+      const rot = i * 0.95;
+      desertCacti.push({
+        type: 'prickly_pear',
+        x, y, z,
+        color: [0.32, 0.49, 0.25],
+        flowerColor: (i % 2 === 0) ? [0.94, 0.30, 0.24] : [0.96, 0.82, 0.18],
+        pads: [
+          { dx: 0, dy: 0.32 * scale, dz: 0, sx: 0.44 * scale, sy: 0.54 * scale, sz: 0.14 * scale, rot: rot, hasFlower: false },
+          { dx: -0.26 * scale, dy: 0.75 * scale, dz: 0.04 * scale, sx: 0.36 * scale, sy: 0.44 * scale, sz: 0.12 * scale, rot: rot + 0.38, hasFlower: true },
+          { dx: 0.26 * scale, dy: 0.78 * scale, dz: -0.04 * scale, sx: 0.36 * scale, sy: 0.45 * scale, sz: 0.12 * scale, rot: rot - 0.35, hasFlower: true },
+          { dx: 0.03 * scale, dy: 1.15 * scale, dz: 0.02 * scale, sx: 0.30 * scale, sy: 0.38 * scale, sz: 0.10 * scale, rot: rot + 0.10, hasFlower: true }
+        ]
+      });
+    }
+
+  } else if (bType === 'bigswamp') {
+    // ---------------------------------------------------------
+    // VERY BIG SWAMP WITH VERY SMALL CENTRAL ISLAND
+    // ---------------------------------------------------------
+    // 1. Island Weeping Cypress Trees (Central Island: r < 9m)
+    const islandTreeCoords = [
+      { x: 3.5, z: 2.5, tr: 0.55, cr: 4.2, h: 9.5 },
+      { x: -3.8, z: 2.8, tr: 0.50, cr: 3.8, h: 8.8 },
+      { x: 0.5, z: -4.5, tr: 0.60, cr: 4.5, h: 10.2 }
+    ];
+    for (const it of islandTreeCoords) {
+      const y = getTerrainHeight(it.x, it.z);
+      jungleTrees.push({
+        x: it.x, y, z: it.z,
+        trunkR: it.tr,
+        canopyR: it.cr,
+        height: it.h
+      });
+    }
+
+    // 2. Cypress Knees & Snags Emergent from Big Swamp Water (r > 9m)
+    for (let i = 0; i < 40; i++) {
+      const a = i * 1.84;
+      const r = 10.5 + (i % 6) * 5.8;
+      const x = Math.cos(a) * r;
+      const z = Math.sin(a) * r;
+      const y = getTerrainHeight(x, z);
+      jungleTrees.push({
+        x, y, z,
+        trunkR: 0.30 + (i % 3) * 0.12,
+        canopyR: 1.2 + (i % 2) * 0.8,
+        height: 2.2 + (i % 4) * 1.4 // Stumps & knees sticking out of water
+      });
+    }
+
+    // Perimeter Swamp Cypress
+    for (let i = 0; i < 44; i++) {
+      const a = (i / 44) * Math.PI * 2;
+      const distRing = HALF_WORLD - 1.0 + (i % 3) * 1.8;
+      const px = Math.cos(a) * distRing;
+      const pz = Math.sin(a) * distRing;
+      const py = getTerrainHeight(px, pz);
+      jungleTrees.push({
+        x: px, y: py, z: pz,
+        trunkR: 0.70 + (i % 3) * 0.25,
+        canopyR: 4.6 + (i % 3) * 0.8,
+        height: 10.0 + (i % 4) * 2.8
+      });
+    }
+
+    // 3. Half-submerged floating/resting cypress logs
+    for (let i = 0; i < 22; i++) {
+      const a = i * 2.15;
+      const r = 8.0 + (i % 5) * 6.5;
+      const x = Math.cos(a) * r;
+      const z = Math.sin(a) * r;
+      const y = getTerrainHeight(x, z);
+      fallenLogs.push({
+        x, y: y + 0.18, z,
+        angle: i * 0.7,
+        len: 3.5 + (i % 3) * 1.2,
+        r: 0.42
+      });
+    }
+
+    // 4. Swamp Ferns & Reeds
+    for (let i = 0; i < 65; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 4.0 + Math.random() * 18.0;
+      const fx = Math.cos(a) * r;
+      const fz = Math.sin(a) * r;
+      const y = getTerrainHeight(fx, fz);
+      groundFerns.push({
+        x: fx, y: y + 0.10, z: fz,
+        sx: 0.65 + (i % 3) * 0.25,
+        sy: 0.16 + (i % 2) * 0.08,
+        sz: 0.65 + (i % 3) * 0.25,
+        color: [0.28, 0.64, 0.24]
+      });
+    }
+
+    // 5. Island rocks
+    for (let i = 0; i < 24; i++) {
+      const a = i * 1.25;
+      const r = 5.0 + (i % 4) * 1.2;
+      const x = Math.cos(a) * r;
+      const z = Math.sin(a) * r;
+      const y = getTerrainHeight(x, z);
+      jungleRocks.push({
+        x, y: y + 0.25, z,
+        sx: 0.7 + (i % 3) * 0.35,
+        sy: 0.4 + (i % 2) * 0.25,
+        sz: 0.7 + (i % 3) * 0.35,
+        color: [0.32, 0.40, 0.32]
+      });
+    }
+
+  } else if (bType === 'grassland') {
+    // ---------------------------------------------------------
+    // CALIFORNIA KINGSNAKE: PURE GREEN GRASS & TREES (NO WATER)
+    // ---------------------------------------------------------
+    // 1. Woodland Oak & Pine Trees across Grassy Hills
+    for (let i = 0; i < 58; i++) {
+      const ang = i * 2.3999;
+      const r = 12.0 + (i % 6) * 6.0;
+      const x = Math.cos(ang) * r;
+      const z = Math.sin(ang) * r;
+      if (Math.hypot(x, z) < 14.0) continue;
+      const y = getTerrainHeight(x, z);
+      jungleTrees.push({
+        x, y, z,
+        trunkR: 0.40 + (i % 3) * 0.16,
+        canopyR: 3.8 + (i % 4) * 0.9,
+        height: 7.8 + (i % 3) * 2.2
+      });
+    }
+
+    // Perimeter Boundary Trees
+    for (let i = 0; i < 44; i++) {
+      const a = (i / 44) * Math.PI * 2;
+      const distRing = HALF_WORLD - 1.0 + (i % 3) * 1.8;
+      const px = Math.cos(a) * distRing;
+      const pz = Math.sin(a) * distRing;
+      const py = getTerrainHeight(px, pz);
+      jungleTrees.push({
+        x: px, y: py, z: pz,
+        trunkR: 0.70 + (i % 3) * 0.25,
+        canopyR: 4.8 + (i % 3) * 0.8,
+        height: 9.5 + (i % 4) * 2.6
+      });
+    }
+
+    // 2. Granite Meadow Boulders
+    for (let i = 0; i < 45; i++) {
+      const x = Math.sin(i * 17.31) * (HALF_WORLD - 6.0);
+      const z = Math.cos(i * 11.19) * (HALF_WORLD - 6.0);
+      if (Math.hypot(x, z) < 13.0) continue;
+      const y = getTerrainHeight(x, z);
+      jungleRocks.push({
+        x, y: y + 0.3, z,
+        sx: 0.7 + (i % 4) * 0.35,
+        sy: 0.5 + (i % 3) * 0.30,
+        sz: 0.8 + (i % 5) * 0.35,
+        color: (i % 2 === 0) ? [0.46, 0.48, 0.44] : [0.38, 0.40, 0.38] // Granite grey
+      });
+    }
+
+    // 3. Fallen Oak Logs
+    for (let i = 0; i < 15; i++) {
+      const x = Math.sin(i * 4.2) * 32.0;
+      const z = Math.cos(i * 3.7) * 32.0;
+      if (Math.hypot(x, z) < 13.0) continue;
+      const y = getTerrainHeight(x, z);
+      fallenLogs.push({
+        x, y: y + 0.25, z,
+        angle: i * 0.85,
+        len: 3.2 + (i % 3) * 1.0,
+        r: 0.42
+      });
+    }
+
+    // 4. Lush Meadow Grass Tussocks & Wildflowers (NO swamp flora, NO bamboo)
+    for (let i = 0; i < 80; i++) {
+      const fx = Math.sin(i * 9.3) * (HALF_WORLD - 8.0);
+      const fz = Math.cos(i * 13.7) * (HALF_WORLD - 8.0);
+      if (Math.hypot(fx, fz) < 8.0) continue;
+      const y = getTerrainHeight(fx, fz);
+      groundFerns.push({
+        x: fx, y: y + 0.12, z: fz,
+        sx: 0.65 + (i % 3) * 0.25,
+        sy: 0.14 + (i % 2) * 0.06,
+        sz: 0.65 + (i % 3) * 0.25,
+        color: (i % 2 === 0) ? [0.36, 0.74, 0.26] : [0.48, 0.82, 0.32] // Bright meadow clover
+      });
+    }
+
+  } else {
+    // ---------------------------------------------------------
+    // KING COBRA: RAINFOREST WITH SMALL CROCODILE-MOUTH WIDE SWAMPS
+    // ---------------------------------------------------------
+    // 1. Tall Majestic Rainforest Canopy Trees
+    for (let i = 0; i < 48; i++) {
+      const ang = i * 2.3999;
+      const r = 12.0 + (i % 6) * 6.2;
+      const x = Math.cos(ang) * r;
+      const z = Math.sin(ang) * r;
+      if (Math.hypot(x, z) < 14.0) continue;
+      // Do not plant trees directly inside small swamps
+      let inSwamp = false;
+      for (const sw of crocSwamps) {
+        if (Math.hypot(x - sw.x, z - sw.z) < sw.r + 1.2) { inSwamp = true; break; }
+      }
+      if (inSwamp) continue;
+      const y = getTerrainHeight(x, z);
+      jungleTrees.push({
+        x, y, z,
+        trunkR: 0.38 + (i % 3) * 0.15,
+        canopyR: 3.6 + (i % 4) * 0.8,
+        height: 8.5 + (i % 3) * 2.4
+      });
+    }
+
+    // Perimeter Rainforest Trees
+    for (let i = 0; i < 44; i++) {
+      const a = (i / 44) * Math.PI * 2;
+      const distRing = HALF_WORLD - 1.0 + (i % 3) * 1.8;
+      const px = Math.cos(a) * distRing;
+      const pz = Math.sin(a) * distRing;
+      const py = getTerrainHeight(px, pz);
+      jungleTrees.push({
+        x: px, y: py, z: pz,
+        trunkR: 0.70 + (i % 3) * 0.25,
+        canopyR: 4.8 + (i % 3) * 0.8,
+        height: 10.0 + (i % 4) * 2.8
+      });
+    }
+
+    // 2. Weathered Mossy Rocks bordering small swamps and clearings
+    for (let i = 0; i < 52; i++) {
+      const x = Math.sin(i * 17.31) * (HALF_WORLD - 6.0);
+      const z = Math.cos(i * 11.19) * (HALF_WORLD - 6.0);
+      if (Math.hypot(x, z) < 14.0) continue;
+      const y = getTerrainHeight(x, z);
+      jungleRocks.push({
+        x, y: y + 0.3, z,
+        sx: 0.7 + (i % 4) * 0.4,
+        sy: 0.5 + (i % 3) * 0.3,
+        sz: 0.8 + (i % 5) * 0.35,
+        color: (i % 2 === 0) ? [0.36, 0.42, 0.34] : [0.30, 0.32, 0.28]
+      });
+    }
+
+    // 3. Fallen Hollow Rainforest Logs
+    for (let i = 0; i < 14; i++) {
+      const x = Math.sin(i * 4.2) * 32.0;
+      const z = Math.cos(i * 3.7) * 32.0;
+      if (Math.hypot(x, z) < 14.0) continue;
+      const y = getTerrainHeight(x, z);
+      fallenLogs.push({
+        x, y: y + 0.25, z,
+        angle: i * 0.85,
+        len: 3.2 + (i % 3) * 1.0,
+        r: 0.45
+      });
+    }
+
+    // 4. Dense Bamboo Groves
+    for (let i = 0; i < 75; i++) {
+      const cx = -22.0 + Math.sin(i * 0.9) * 14.0;
+      const cz = 18.0 + Math.cos(i * 0.9) * 14.0;
+      if (Math.hypot(cx, cz) < 14.0) continue;
+      const y = getTerrainHeight(cx, cz);
+      bambooStalks.push({
+        x: cx, y, z: cz,
+        h: 4.8 + (i % 3) * 1.5,
+        thick: 0.09 + (i % 2) * 0.03
+      });
+    }
+
+    // 5. Lush Tropical Ground Ferns & Monsteras
+    for (let i = 0; i < 70; i++) {
+      const fx = Math.sin(i * 9.3) * (HALF_WORLD - 8.0);
+      const fz = Math.cos(i * 13.7) * (HALF_WORLD - 8.0);
+      if (Math.hypot(fx, fz) < 8.0) continue;
+      const y = getTerrainHeight(fx, fz);
+      groundFerns.push({
+        x: fx, y: y + 0.12, z: fz,
+        sx: 0.65 + (i % 3) * 0.25,
+        sy: 0.14 + (i % 2) * 0.06,
+        sz: 0.65 + (i % 3) * 0.25,
+        color: (i % 2 === 0) ? [0.32, 0.68, 0.26] : [0.44, 0.76, 0.30]
+      });
+    }
+  }
+}
+initJungleLandmarks();
+
+function drawScenery() {
+  gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.vb);
+  gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.nb);
+  gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.ub);
+  gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereMesh.ib);
+
+  gl.uniform1f(loc.uMatType, 6.0); // Scenery/flora
+
+  // 1. Rocks
+  for (const r of jungleRocks) {
+    const mRock = new Float32Array([
+      r.sx, 0, 0, 0,
+      0, r.sy, 0, 0,
+      0, 0, r.sz, 0,
+      r.x, r.y, r.z, 1
+    ]);
+    gl.uniform3fv(loc.uBaseColor, r.color);
+    gl.uniformMatrix4fv(loc.uModel, false, mRock);
+    gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mRock));
+    gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+
+  // 2. Fallen Logs
+  for (const log of fallenLogs) {
+    const c = Math.cos(log.angle), s = Math.sin(log.angle);
+    const mLog = new Float32Array([
+      c * log.r, 0, -s * log.len, 0,
+      0, log.r * 0.85, 0, 0,
+      s * log.r, 0, c * log.len, 0,
+      log.x, log.y, log.z, 1
+    ]);
+    gl.uniform3fv(loc.uBaseColor, [0.36, 0.26, 0.18]);
+    gl.uniformMatrix4fv(loc.uModel, false, mLog);
+    gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mLog));
+    gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+
+  // 3. Tall Rainforest Canopy Trees & Bamboo (Using true Cylinders)
+  gl.bindBuffer(gl.ARRAY_BUFFER, cylinderMesh.vb);
+  gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, cylinderMesh.nb);
+  gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, cylinderMesh.ub);
+  gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cylinderMesh.ib);
+
+  for (const tree of jungleTrees) {
+    const mTrunk = new Float32Array([
+      tree.trunkR, 0, 0, 0,
+      0, tree.height, 0, 0,
+      0, 0, tree.trunkR, 0,
+      tree.x, tree.y, tree.z, 1
+    ]);
+    gl.uniform3fv(loc.uBaseColor, [0.32, 0.22, 0.14]);
+    gl.uniformMatrix4fv(loc.uModel, false, mTrunk);
+    gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mTrunk));
+    gl.drawElements(gl.TRIANGLES, cylinderMesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+
+  // 4. Bamboo Stalks
+  for (const b of bambooStalks) {
+    const mBamboo = new Float32Array([
+      b.thick, 0, 0, 0,
+      0, b.h, 0, 0,
+      0, 0, b.thick, 0,
+      b.x, b.y, b.z, 1
+    ]);
+    gl.uniform3fv(loc.uBaseColor, [0.46, 0.72, 0.28]);
+    gl.uniformMatrix4fv(loc.uModel, false, mBamboo);
+    gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mBamboo));
+    gl.drawElements(gl.TRIANGLES, cylinderMesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+
+  // Tree Canopies (Elevated overhead high above camera)
+  gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.vb);
+  gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.nb);
+  gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.ub);
+  gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereMesh.ib);
+
+  for (const tree of jungleTrees) {
+    for (let tier = 0; tier < 2; tier++) {
+      const cr = tree.canopyR * (1.0 - tier * 0.22);
+      const mCanopy = new Float32Array([
+        cr, 0, 0, 0,
+        0, cr * 0.55, 0, 0,
+        0, 0, cr, 0,
+        tree.x, tree.y + tree.height + tier * 1.8, tree.z, 1
+      ]);
+      const leafCol = tier === 0 ? [0.24, 0.54, 0.28] : [0.36, 0.68, 0.36];
+      gl.uniform3fv(loc.uBaseColor, leafCol);
+      gl.uniformMatrix4fv(loc.uModel, false, mCanopy);
+      gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mCanopy));
+      gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+    }
+  }
+
+  // 5. Ground Ferns & Monsteras (Arching 3D Fronds)
+  gl.bindBuffer(gl.ARRAY_BUFFER, fernMesh.vb);
+  gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, fernMesh.nb);
+  gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, fernMesh.ub);
+  gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, fernMesh.ib);
+
+  for (const f of groundFerns) {
+    const mFern = new Float32Array([
+      f.sx, 0, 0, 0,
+      0, f.sy * 2.5, 0, 0,
+      0, 0, f.sz, 0,
+      f.x, f.y, f.z, 1
+    ]);
+    gl.uniform3fv(loc.uBaseColor, f.color);
+    gl.uniformMatrix4fv(loc.uModel, false, mFern);
+    gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mFern));
+    gl.drawElements(gl.TRIANGLES, fernMesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+
+  // 6. Desert Cacti (Saguaros with upward branches, Golden Barrels, Prickly Pear pads)
+  if (desertCacti.length > 0) {
+    // A. Draw all cylindrical stems and vertical arms
+    gl.bindBuffer(gl.ARRAY_BUFFER, cylinderMesh.vb);
+    gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, cylinderMesh.nb);
+    gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, cylinderMesh.ub);
+    gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cylinderMesh.ib);
+
+    for (let c = 0; c < desertCacti.length; c++) {
+      const cac = desertCacti[c];
+      if (cac.type === 'saguaro') {
+        const mTrunk = new Float32Array([
+          cac.rStem, 0, 0, 0,
+          0, cac.height, 0, 0,
+          0, 0, cac.rStem, 0,
+          cac.x, cac.y, cac.z, 1
+        ]);
+        gl.uniform3fv(loc.uBaseColor, cac.color);
+        gl.uniformMatrix4fv(loc.uModel, false, mTrunk);
+        gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mTrunk));
+        gl.drawElements(gl.TRIANGLES, cylinderMesh.count, gl.UNSIGNED_SHORT, 0);
+
+        const rArm = cac.rStem * 0.72;
+        if (cac.hasLeftArm) {
+          const mArmL = new Float32Array([
+            rArm, 0, 0, 0,
+            0, cac.armUpL, 0, 0,
+            0, 0, rArm, 0,
+            cac.armPosLX, cac.armPosLY, cac.armPosLZ, 1
+          ]);
+          gl.uniformMatrix4fv(loc.uModel, false, mArmL);
+          gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mArmL));
+          gl.drawElements(gl.TRIANGLES, cylinderMesh.count, gl.UNSIGNED_SHORT, 0);
+        }
+        if (cac.hasRightArm) {
+          const mArmR = new Float32Array([
+            rArm, 0, 0, 0,
+            0, cac.armUpR, 0, 0,
+            0, 0, rArm, 0,
+            cac.armPosRX, cac.armPosRY, cac.armPosRZ, 1
+          ]);
+          gl.uniformMatrix4fv(loc.uModel, false, mArmR);
+          gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mArmR));
+          gl.drawElements(gl.TRIANGLES, cylinderMesh.count, gl.UNSIGNED_SHORT, 0);
+        }
+      }
+    }
+
+    // B. Draw rounded cactus crowns, elbows, barrel bodies & blooms using sphereMesh
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.vb);
+    gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.nb);
+    gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereMesh.ub);
+    gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereMesh.ib);
+
+    for (let c = 0; c < desertCacti.length; c++) {
+      const cac = desertCacti[c];
+      if (cac.type === 'saguaro') {
+        const mCrown = new Float32Array([
+          cac.rStem * 1.05, 0, 0, 0,
+          0, cac.rStem * 0.95, 0, 0,
+          0, 0, cac.rStem * 1.05, 0,
+          cac.x, cac.y + cac.height, cac.z, 1
+        ]);
+        gl.uniform3fv(loc.uBaseColor, cac.color);
+        gl.uniformMatrix4fv(loc.uModel, false, mCrown);
+        gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mCrown));
+        gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+
+        const rArm = cac.rStem * 0.72;
+        if (cac.hasLeftArm) {
+          const mElbowL = new Float32Array([
+            cac.elbowScaleLX, 0, 0, 0,
+            0, rArm * 1.15, 0, 0,
+            0, 0, cac.elbowScaleLZ, 0,
+            cac.elbowMidLX, cac.armPosLY, cac.elbowMidLZ, 1
+          ]);
+          gl.uniformMatrix4fv(loc.uModel, false, mElbowL);
+          gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mElbowL));
+          gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+
+          const mArmCrownL = new Float32Array([
+            rArm * 1.05, 0, 0, 0,
+            0, rArm * 0.95, 0, 0,
+            0, 0, rArm * 1.05, 0,
+            cac.armPosLX, cac.armPosLY + cac.armUpL, cac.armPosLZ, 1
+          ]);
+          gl.uniformMatrix4fv(loc.uModel, false, mArmCrownL);
+          gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mArmCrownL));
+          gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+        }
+
+        if (cac.hasRightArm) {
+          const mElbowR = new Float32Array([
+            cac.elbowScaleRX, 0, 0, 0,
+            0, rArm * 1.15, 0, 0,
+            0, 0, cac.elbowScaleRZ, 0,
+            cac.elbowMidRX, cac.armPosRY, cac.elbowMidRZ, 1
+          ]);
+          gl.uniformMatrix4fv(loc.uModel, false, mElbowR);
+          gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mElbowR));
+          gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+
+          const mArmCrownR = new Float32Array([
+            rArm * 1.05, 0, 0, 0,
+            0, rArm * 0.95, 0, 0,
+            0, 0, rArm * 1.05, 0,
+            cac.armPosRX, cac.armPosRY + cac.armUpR, cac.armPosRZ, 1
+          ]);
+          gl.uniformMatrix4fv(loc.uModel, false, mArmCrownR);
+          gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mArmCrownR));
+          gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+        }
+
+      } else if (cac.type === 'barrel') {
+        const mBarrel = new Float32Array([
+          cac.r, 0, 0, 0,
+          0, cac.r * 1.30, 0, 0,
+          0, 0, cac.r, 0,
+          cac.x, cac.y, cac.z, 1
+        ]);
+        gl.uniform3fv(loc.uBaseColor, cac.color);
+        gl.uniformMatrix4fv(loc.uModel, false, mBarrel);
+        gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mBarrel));
+        gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+
+        const mBloom = new Float32Array([
+          cac.r * 0.38, 0, 0, 0,
+          0, cac.r * 0.25, 0, 0,
+          0, 0, cac.r * 0.38, 0,
+          cac.x, cac.y + cac.r * 1.28, cac.z, 1
+        ]);
+        gl.uniform3fv(loc.uBaseColor, [0.96, 0.82, 0.22]);
+        gl.uniformMatrix4fv(loc.uModel, false, mBloom);
+        gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mBloom));
+        gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+
+      } else if (cac.type === 'prickly_pear') {
+        for (let p = 0; p < cac.pads.length; p++) {
+          const pad = cac.pads[p];
+          const cRot = Math.cos(pad.rot), sRot = Math.sin(pad.rot);
+          const mPad = new Float32Array([
+            cRot * pad.sx, 0, -sRot * pad.sz, 0,
+            0, pad.sy, 0, 0,
+            sRot * pad.sx, 0, cRot * pad.sz, 0,
+            cac.x + pad.dx, cac.y + pad.dy, cac.z + pad.dz, 1
+          ]);
+          gl.uniform3fv(loc.uBaseColor, cac.color);
+          gl.uniformMatrix4fv(loc.uModel, false, mPad);
+          gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mPad));
+          gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+
+          if (pad.hasFlower) {
+            const mFlow = new Float32Array([
+              0.10, 0, 0, 0,
+              0, 0.10, 0, 0,
+              0, 0, 0.10, 0,
+              cac.x + pad.dx, cac.y + pad.dy + pad.sy * 0.95, cac.z + pad.dz, 1
+            ]);
+            gl.uniform3fv(loc.uBaseColor, cac.flowerColor);
+            gl.uniformMatrix4fv(loc.uModel, false, mFlow);
+            gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(mFlow));
+            gl.drawElements(gl.TRIANGLES, sphereMesh.count, gl.UNSIGNED_SHORT, 0);
+          }
+        }
+      }
+    }
+  }
+}
+
+// -------------------------------------------------------------
+// WEB AUDIO SYNTHESIZER & IMMERSIVE RAINFOREST SOUNDSCAPE
+// -------------------------------------------------------------
+let audioCtx = null;
+let soundEnabled = true;
+let masterGain = null;
+let ambientGain = null;
+let riverGainNode = null;
+let rainGainNode = null;
+let scaleGainNode = null;
+let scaleFilterNode = null;
+let nextBirdTime = 0;
+
+function initAudio() {
+  if (!soundEnabled) return;
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.setValueAtTime(1.0, audioCtx.currentTime);
+      masterGain.connect(audioCtx.destination);
+      setupAmbientAudio();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  } catch (e) {
+    console.warn('AudioContext init error:', e);
+  }
+}
+
+function setupAmbientAudio() {
+  if (!audioCtx || !masterGain) return;
+  try {
+    ambientGain = audioCtx.createGain();
+    ambientGain.gain.value = 0.50;
+    ambientGain.connect(masterGain);
+
+    // 1. Canopy Breeze (Pink Noise through modulated lowpass filter)
+    const breezeBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 4, audioCtx.sampleRate);
+    const bd = breezeBuf.getChannelData(0);
+    let bLast = 0;
+    for (let i = 0; i < bd.length; i++) {
+      const white = Math.random() * 2 - 1;
+      bLast = bLast * 0.95 + white * 0.05;
+      bd[i] = bLast * 2.2;
+    }
+    const breezeSrc = audioCtx.createBufferSource();
+    breezeSrc.buffer = breezeBuf;
+    breezeSrc.loop = true;
+
+    const breezeFilt = audioCtx.createBiquadFilter();
+    breezeFilt.type = 'lowpass';
+    breezeFilt.frequency.value = 340;
+
+    const breezeLfo = audioCtx.createOscillator();
+    const breezeLfoG = audioCtx.createGain();
+    breezeLfo.frequency.value = 0.08;
+    breezeLfoG.gain.value = 140;
+    breezeLfo.connect(breezeLfoG);
+    breezeLfoG.connect(breezeFilt.frequency);
+    breezeLfo.start();
+
+    const breezeGain = audioCtx.createGain();
+    breezeGain.gain.value = 0.20;
+    breezeSrc.connect(breezeFilt);
+    breezeFilt.connect(breezeGain);
+    breezeGain.connect(ambientGain);
+    breezeSrc.start();
+
+    // 2. Rainforest Cicadas & Canopy Shimmer
+    const cicadaBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 2.5, audioCtx.sampleRate);
+    const cd = cicadaBuf.getChannelData(0);
+    for (let i = 0; i < cd.length; i++) cd[i] = (Math.random() * 2 - 1) * 0.35;
+    const cicadaSrc = audioCtx.createBufferSource();
+    cicadaSrc.buffer = cicadaBuf;
+    cicadaSrc.loop = true;
+
+    const cicadaFilt = audioCtx.createBiquadFilter();
+    cicadaFilt.type = 'bandpass';
+    cicadaFilt.frequency.value = 5600;
+    cicadaFilt.Q.value = 4.0;
+
+    const cicadaLfo = audioCtx.createOscillator();
+    const cicadaLfoG = audioCtx.createGain();
+    cicadaLfo.frequency.value = 11.5;
+    cicadaLfoG.gain.value = 0.035;
+
+    const cicadaG = audioCtx.createGain();
+    cicadaG.gain.value = 0.055;
+
+    cicadaSrc.connect(cicadaFilt);
+    cicadaFilt.connect(cicadaLfoG);
+    cicadaLfoG.connect(cicadaG);
+    cicadaG.connect(ambientGain);
+    cicadaSrc.start();
+    cicadaLfo.start();
+
+    // 3. Dynamic River Water Murmur
+    const riverBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 3, audioCtx.sampleRate);
+    const rd = riverBuf.getChannelData(0);
+    let rLast = 0;
+    for (let i = 0; i < rd.length; i++) {
+      const white = Math.random() * 2 - 1;
+      rLast = rLast * 0.88 + white * 0.12;
+      rd[i] = rLast * 1.9;
+    }
+    const riverSrc = audioCtx.createBufferSource();
+    riverSrc.buffer = riverBuf;
+    riverSrc.loop = true;
+
+    const riverFilt = audioCtx.createBiquadFilter();
+    riverFilt.type = 'bandpass';
+    riverFilt.frequency.value = 920;
+    riverFilt.Q.value = 1.4;
+
+    riverGainNode = audioCtx.createGain();
+    riverGainNode.gain.value = 0.0;
+
+    riverSrc.connect(riverFilt);
+    riverFilt.connect(riverGainNode);
+    riverGainNode.connect(ambientGain);
+    riverSrc.start();
+
+    // 4. Tropical Rainforest Rainfall Sound Generator
+    const rainBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 3, audioCtx.sampleRate);
+    const rnd = rainBuf.getChannelData(0);
+    let rnLast = 0;
+    for (let i = 0; i < rnd.length; i++) {
+      const white = Math.random() * 2 - 1;
+      rnLast = rnLast * 0.72 + white * 0.28;
+      rnd[i] = rnLast * 1.6;
+    }
+    const rainSrc = audioCtx.createBufferSource();
+    rainSrc.buffer = rainBuf;
+    rainSrc.loop = true;
+
+    const rainFilt = audioCtx.createBiquadFilter();
+    rainFilt.type = 'lowpass';
+    rainFilt.frequency.value = 1750;
+
+    rainGainNode = audioCtx.createGain();
+    rainGainNode.gain.value = 0.0;
+
+    rainSrc.connect(rainFilt);
+    rainFilt.connect(rainGainNode);
+    rainGainNode.connect(ambientGain);
+    rainSrc.start();
+
+    // 5. Continuous Belly Scale Sliding Generator
+    const scaleBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+    const sld = scaleBuf.getChannelData(0);
+    let sLast = 0;
+    for (let i = 0; i < sld.length; i++) {
+      const white = Math.random() * 2 - 1;
+      sLast = sLast * 0.82 + white * 0.18;
+      sld[i] = sLast * 2.0;
+    }
+    const scaleSrc = audioCtx.createBufferSource();
+    scaleSrc.buffer = scaleBuf;
+    scaleSrc.loop = true;
+
+    scaleFilterNode = audioCtx.createBiquadFilter();
+    scaleFilterNode.type = 'bandpass';
+    scaleFilterNode.frequency.value = 1900;
+    scaleFilterNode.Q.value = 1.8;
+
+    scaleGainNode = audioCtx.createGain();
+    scaleGainNode.gain.value = 0.002;
+
+    scaleSrc.connect(scaleFilterNode);
+    scaleFilterNode.connect(scaleGainNode);
+    scaleGainNode.connect(masterGain);
+    scaleSrc.start();
+  } catch (e) {
+    console.warn('Ambient audio setup error:', e);
+  }
+}
+
+function updateAudio(dt, isMoving, isDash, playerHead) {
+  if (!soundEnabled || !audioCtx || audioCtx.state !== 'running') return;
+  const now = audioCtx.currentTime;
+  const modeObj = (typeof modes !== 'undefined' && modes[selectedMode]) ? modes[selectedMode] : null;
+
+  // Modulate scale sliding rustle based on speed and dash
+  if (scaleGainNode && scaleFilterNode) {
+    const targetVol = isMoving ? (isDash ? 0.28 : 0.13) : 0.002;
+    const targetFreq = isDash ? 2700 : 1750;
+    scaleGainNode.gain.setTargetAtTime(targetVol, now, 0.08);
+    scaleFilterNode.frequency.setTargetAtTime(targetFreq, now, 0.08);
+  }
+
+  // Modulate rain sound (King Cobra Rainforest)
+  if (rainGainNode) {
+    const rainVol = modeObj?.hasRain ? 0.28 : 0.0;
+    rainGainNode.gain.setTargetAtTime(rainVol, now, 0.25);
+  }
+
+  // Modulate water sound: muted for California Kingsnake (grassland) and King Brown Snake (desert)
+  if (riverGainNode) {
+    if (modeObj?.noWater) {
+      riverGainNode.gain.setTargetAtTime(0.0, now, 0.1);
+    } else if (modeObj?.isSwamp) {
+      riverGainNode.gain.setTargetAtTime(0.38, now, 0.25); // Continuous murky swamp water
+    } else if (modeObj?.hasSmallSwamps && playerHead) {
+      let nearSwamp = false;
+      for (const sw of crocSwamps) {
+        if (Math.hypot(playerHead[0] - sw.x, playerHead[2] - sw.z) < sw.r + 3.0) {
+          nearSwamp = true; break;
+        }
+      }
+      riverGainNode.gain.setTargetAtTime(nearSwamp ? 0.25 : 0.04, now, 0.25);
+    } else {
+      riverGainNode.gain.setTargetAtTime(0.0, now, 0.1);
+    }
+  }
+
+  // Canopy bird / desert eagle call
+  if (now > nextBirdTime) {
+    nextBirdTime = now + 16.0 + Math.random() * 20.0;
+    playTropicalBirdCall();
+  }
+}
+
+function playTropicalBirdCall() {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(2100, now);
+    osc.frequency.linearRampToValueAtTime(2850, now + 0.16);
+    osc.frequency.linearRampToValueAtTime(1950, now + 0.38);
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.045, now + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+
+    osc.connect(gain);
+    gain.connect(ambientGain || masterGain);
+    osc.start(now);
+    osc.stop(now + 0.45);
+  } catch (e) {}
+}
+
+function playScaleRustle(velocity = 1.0) {
+  // Handled continuously and smoothly by scaleGainNode generator
+}
+
+function playDashSound() {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(280, now);
+    osc.frequency.exponentialRampToValueAtTime(80, now + 0.22);
+    gain.gain.setValueAtTime(0.16, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+    osc.connect(gain);
+    gain.connect(masterGain);
+    osc.start(now);
+    osc.stop(now + 0.25);
+  } catch (e) {}
+}
+
+function playKingRatHiss() {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    const dur = 0.44;
+    const hissBuf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * dur), audioCtx.sampleRate);
+    const hd = hissBuf.getChannelData(0);
+    for (let i = 0; i < hd.length; i++) hd[i] = (Math.random() * 2 - 1) * 0.4;
+    const hissSrc = audioCtx.createBufferSource();
+    hissSrc.buffer = hissBuf;
+
+    const f = audioCtx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.setValueAtTime(2700, now);
+    f.frequency.linearRampToValueAtTime(1850, now + dur);
+    f.Q.value = 1.6;
+
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.22, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+    hissSrc.connect(f);
+    f.connect(gain);
+    gain.connect(masterGain);
+    hissSrc.start(now);
+  } catch (e) {}
+}
+
+function playKingBrownHiss() {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    const dur = 0.40;
+    const hissBuf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * dur), audioCtx.sampleRate);
+    const hd = hissBuf.getChannelData(0);
+    for (let i = 0; i < hd.length; i++) hd[i] = (Math.random() * 2 - 1) * 0.45;
+    const hissSrc = audioCtx.createBufferSource();
+    hissSrc.buffer = hissBuf;
+
+    const f = audioCtx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.setValueAtTime(1600, now);
+    f.frequency.linearRampToValueAtTime(1100, now + dur);
+    f.Q.value = 1.8;
+
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.24, now + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+    hissSrc.connect(f);
+    f.connect(gain);
+    gain.connect(masterGain);
+    hissSrc.start(now);
+  } catch (e) {}
+}
+
+function playRattleBuzz() {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    const bursts = 7;
+    for (let b = 0; b < bursts; b++) {
+      const bTime = now + b * 0.021;
+      const buf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.013), audioCtx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.35;
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf;
+
+      const f = audioCtx.createBiquadFilter();
+      f.type = 'bandpass';
+      f.frequency.setValueAtTime(4500, bTime);
+      f.Q.value = 3.5;
+
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.09, bTime);
+      g.gain.exponentialRampToValueAtTime(0.001, bTime + 0.012);
+
+      src.connect(f);
+      f.connect(g);
+      g.connect(masterGain);
+      src.start(bTime);
+    }
+  } catch (e) {}
+}
+
+function playCatchPreySound(isKingRat = false) {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    // 1. Strike Snap transient
+    const snapOsc = audioCtx.createOscillator();
+    const snapGain = audioCtx.createGain();
+    snapOsc.type = 'sine';
+    snapOsc.frequency.setValueAtTime(850, now);
+    snapOsc.frequency.exponentialRampToValueAtTime(110, now + 0.09);
+    snapGain.gain.setValueAtTime(0.28, now);
+    snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.10);
+    snapOsc.connect(snapGain);
+    snapGain.connect(masterGain);
+    snapOsc.start(now);
+    snapOsc.stop(now + 0.11);
+
+    // 2. Heavy Constriction & Thrash Rumble
+    const thrashBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.30, audioCtx.sampleRate);
+    const td = thrashBuf.getChannelData(0);
+    for (let i = 0; i < td.length; i++) td[i] = (Math.random() * 2 - 1) * 0.4;
+    const thrashSrc = audioCtx.createBufferSource();
+    thrashSrc.buffer = thrashBuf;
+    const thrashF = audioCtx.createBiquadFilter();
+    thrashF.type = 'lowpass';
+    thrashF.frequency.setValueAtTime(580, now + 0.04);
+    thrashF.frequency.exponentialRampToValueAtTime(120, now + 0.28);
+    const thrashG = audioCtx.createGain();
+    thrashG.gain.setValueAtTime(0.20, now + 0.04);
+    thrashG.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+    thrashSrc.connect(thrashF);
+    thrashF.connect(thrashG);
+    thrashG.connect(masterGain);
+    thrashSrc.start(now + 0.04);
+
+    // 3. Swallow & Triumph harmonic chime: C major pentatonic
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, idx) => {
+      const delay = idx * 0.08;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + 0.16 + delay);
+      gain.gain.setValueAtTime(0.09, now + 0.16 + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.52 + delay);
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.start(now + 0.16 + delay);
+      osc.stop(now + 0.55 + delay);
+    });
+  } catch (e) {}
+}
+
+function playFrogCatchSound() {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    // Water splash
+    const splashBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.16, audioCtx.sampleRate);
+    const sd = splashBuf.getChannelData(0);
+    for (let i = 0; i < sd.length; i++) sd[i] = (Math.random() * 2 - 1) * 0.32;
+    const splash = audioCtx.createBufferSource();
+    splash.buffer = splashBuf;
+    const sFilt = audioCtx.createBiquadFilter();
+    sFilt.type = 'bandpass';
+    sFilt.frequency.setValueAtTime(1450, now);
+    sFilt.Q.value = 1.1;
+    const sGain = audioCtx.createGain();
+    sGain.gain.setValueAtTime(0.22, now);
+    sGain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+    splash.connect(sFilt);
+    sFilt.connect(sGain);
+    sGain.connect(masterGain);
+    splash.start(now);
+
+    // Frog gulp
+    const gulp = audioCtx.createOscillator();
+    const gGain = audioCtx.createGain();
+    gulp.type = 'sine';
+    gulp.frequency.setValueAtTime(360, now + 0.03);
+    gulp.frequency.exponentialRampToValueAtTime(150, now + 0.18);
+    gGain.gain.setValueAtTime(0.14, now + 0.03);
+    gGain.gain.exponentialRampToValueAtTime(0.001, now + 0.20);
+    gulp.connect(gGain);
+    gGain.connect(masterGain);
+    gulp.start(now + 0.03);
+    gulp.stop(now + 0.21);
+
+    // Dash surge chime
+    const chime = audioCtx.createOscillator();
+    const cGain = audioCtx.createGain();
+    chime.type = 'triangle';
+    chime.frequency.setValueAtTime(659.25, now + 0.10);
+    chime.frequency.exponentialRampToValueAtTime(987.77, now + 0.28);
+    cGain.gain.setValueAtTime(0.12, now + 0.10);
+    cGain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+    chime.connect(cGain);
+    cGain.connect(masterGain);
+    chime.start(now + 0.10);
+    chime.stop(now + 0.38);
+  } catch (e) {}
+}
+
+function playPreyFrogCatchSound(distToPlayer = 10) {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const vol = Math.max(0.04, Math.min(0.25, 1.0 - (distToPlayer / 35.0)));
+    const now = audioCtx.currentTime;
+    // Quick predatory snap
+    const snapBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.10, audioCtx.sampleRate);
+    const sd = snapBuf.getChannelData(0);
+    for (let i = 0; i < sd.length; i++) sd[i] = (Math.random() * 2 - 1) * 0.28;
+    const snap = audioCtx.createBufferSource();
+    snap.buffer = snapBuf;
+    const sFilt = audioCtx.createBiquadFilter();
+    sFilt.type = 'bandpass';
+    sFilt.frequency.setValueAtTime(1750, now);
+    sFilt.Q.value = 1.6;
+    const sGain = audioCtx.createGain();
+    sGain.gain.setValueAtTime(vol * 0.85, now);
+    sGain.gain.exponentialRampToValueAtTime(0.001, now + 0.10);
+    snap.connect(sFilt);
+    sFilt.connect(sGain);
+    sGain.connect(masterGain);
+    snap.start(now);
+
+    // Gulp / swallow sound
+    const gulp = audioCtx.createOscillator();
+    const gGain = audioCtx.createGain();
+    gulp.type = 'sine';
+    gulp.frequency.setValueAtTime(320, now + 0.02);
+    gulp.frequency.exponentialRampToValueAtTime(130, now + 0.16);
+    gGain.gain.setValueAtTime(vol * 0.75, now + 0.02);
+    gGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+    gulp.connect(gGain);
+    gGain.connect(masterGain);
+    gulp.start(now + 0.02);
+    gulp.stop(now + 0.19);
+  } catch (e) {}
+}
+
+function playFrogCroak() {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    [0, 0.13].forEach((offset, idx) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(idx === 0 ? 290 : 330, now + offset);
+      osc.frequency.linearRampToValueAtTime(idx === 0 ? 230 : 270, now + offset + 0.08);
+
+      const f1 = audioCtx.createBiquadFilter();
+      f1.type = 'bandpass';
+      f1.frequency.value = 350; f1.Q.value = 4.2;
+
+      gain.gain.setValueAtTime(0.05, now + offset);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.08);
+
+      osc.connect(f1);
+      f1.connect(gain);
+      gain.connect(masterGain);
+      osc.start(now + offset);
+      osc.stop(now + offset + 0.09);
+    });
+  } catch (e) {}
+}
+
+function playTongueFlickSound() {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    [0, 0.07].forEach(offset => {
+      const noise = audioCtx.createBufferSource();
+      const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.04, audioCtx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.25;
+      noise.buffer = buf;
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(3400 + offset * 800, now + offset);
+      filter.Q.value = 2.5;
+
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.07, now + offset);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.038);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      noise.start(now + offset);
+    });
+  } catch (e) {}
+}
+
+function playScentChime(dist = 40) {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    const pitch = dist < 18 ? 440 : dist < 35 ? 329.63 : 220;
+    const osc1 = audioCtx.createOscillator();
+    const osc2 = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(pitch, now);
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(pitch * 1.5, now);
+
+    gain.gain.setValueAtTime(0.06, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(masterGain);
+    osc1.start(now);
+    osc2.start(now);
+    osc1.stop(now + 0.40);
+    osc2.stop(now + 0.40);
+  } catch (e) {}
+}
+
+function playCelebrationFanfare() {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 major chord arpeggio
+    notes.forEach((freq, idx) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const startTime = now + idx * 0.075;
+      const duration = 0.45;
+      
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, startTime);
+      
+      gain.gain.setValueAtTime(0.09, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.start(startTime);
+      osc.stop(startTime + duration + 0.05);
+    });
+  } catch (e) {}
+}
+
+// -------------------------------------------------------------
+// SERPENTINE GAMEPLAY SIMULATION & KINEMATICS
+// -------------------------------------------------------------
+selectedMode = 0;
+let isFamilyMode = true; // Friendly, accessible & forgiving play mode for ages 5 to 83
+let isGameLive = false;
+let score = 0;
+let frogsEaten = 0;
+let gameTime = 0;
+let lastTimestamp = 0;
+let dashUntil = 0;
+let dashStamina = 1.0;
+let tongueFlickUntil = 0;
+let nearestPreyDistance = 40;
+
+const NUM_VERTEBRAE = 24;
+const SEG_SPACING = 0.32;
+let playerHeading = 0;
+let targetHeading = 0;
+let playerSpine = [];
+let undulationPhase = 0;
+
+let camHeading = 0;
+
+const preySnakes = [];
+const activeFrogs = [];
+
+function showToast(msg) {
+  // Debug / debut toast popups removed to keep gameplay immersive and clean
+}
+
+function triggerDash() {
+  initAudio();
+  if (dashStamina > 0.15 || gameTime < dashUntil) {
+    dashUntil = gameTime + 1.25;
+    playDashSound();
+    const modeObj = modes[selectedMode];
+    if (modeObj.isKingRatSnake) {
+      playKingRatHiss();
+    } else if (modeObj.isKingBrownSnake) {
+      playKingBrownHiss();
+    }
+
+    // Smart Strike Magnetism for 46yo & tablet ergonomics:
+    // When lunging within 7.5m of prey, automatically snap aim onto prey for an effortless strike!
+    if (isFamilyMode && playerSpine.length > 0 && preySnakes.length > 0) {
+      const head = playerSpine[0];
+      let bestDist = 7.5;
+      let targetPrey = null;
+      for (const p of preySnakes) {
+        if (!p.spine || !p.spine[0]) continue;
+        const d = Math.hypot(p.spine[0][0] - head[0], p.spine[0][2] - head[2]);
+        if (d < bestDist) {
+          bestDist = d;
+          targetPrey = p;
+        }
+      }
+      if (targetPrey) {
+        const aimAngle = Math.atan2(targetPrey.spine[0][2] - head[2], targetPrey.spine[0][0] - head[0]);
+        targetHeading = aimAngle;
+        playerHeading = aimAngle;
+      }
+    }
+  }
+}
+
+function triggerTongueFlick() {
+  initAudio();
+  tongueFlickUntil = gameTime + 0.65;
+  playTongueFlickSound();
+  playScentChime(nearestPreyDistance);
+}
+
+function spawnPreySnake(id) {
+  const modeObj = (typeof modes !== 'undefined' && modes[selectedMode]) ? modes[selectedMode] : null;
+  const bType = modeObj?.biomeType || 'rainforest';
+  let sx, sz, distPlayer;
+  let attempts = 0;
+  do {
+    if (bType === 'bigswamp') {
+      // In Big Swamp, spawn near/on the island or in the surrounding shallow wetland
+      const a = Math.random() * Math.PI * 2;
+      const r = (attempts < 8) ? (5.0 + Math.random() * 15.0) : (Math.random() * 32.0);
+      sx = Math.cos(a) * r;
+      sz = Math.sin(a) * r;
+    } else {
+      sx = (Math.random() * 2 - 1) * (HALF_WORLD - 10.0);
+      sz = (Math.random() * 2 - 1) * (HALF_WORLD - 10.0);
+    }
+    distPlayer = Math.hypot(sx - (playerSpine[0]?.[0] || 0), sz - (playerSpine[0]?.[2] || 0));
+    attempts++;
+  } while (distPlayer < 18.0 && attempts < 20);
+
+  const numSegs = 18;
+  const spine = [];
+  const y = getTerrainHeight(sx, sz);
+  for (let i = 0; i < numSegs; i++) {
+    spine.push([sx - i * 0.28, y + 0.12, sz]);
+  }
+
+  const isSluggish = !!modeObj?.isNocturnalSluggish;
+  const isTaipan = !!modeObj?.isInlandTaipan;
+  const baseSpeed = isSluggish ? (0.92 + Math.random() * 0.22) : (isTaipan ? (1.45 + Math.random() * 0.35) : (1.35 + Math.random() * 0.35));
+
+  return {
+    id,
+    heading: Math.random() * Math.PI * 2,
+    targetHeading: Math.random() * Math.PI * 2,
+    spine,
+    speed: baseSpeed,
+    isSluggish,
+    nextTurnTime: Math.random() * 3.0,
+    undulation: Math.random() * 10.0,
+    fleeing: false,
+    bulges: []
+  };
+}
+
+function initGame() {
+  initAudio();
+  rebuildBiomeMeshes();
+  score = 0;
+  frogsEaten = 0;
+  gameTime = 0;
+  dashUntil = 0;
+  dashStamina = 1.0;
+  tongueFlickUntil = 0;
+  playerHeading = 0;
+  targetHeading = 0;
+  camHeading = 0;
+  undulationPhase = 0;
+  digestionBulges.length = 0;
+
+  playerSpine = [];
+  for (let i = 0; i < NUM_VERTEBRAE; i++) {
+    const x = -i * SEG_SPACING;
+    const z = 0;
+    const y = getTerrainHeight(x, z) + 0.15;
+    playerSpine.push([x, y, z]);
+  }
+
+  preySnakes.length = 0;
+  for (let i = 0; i < 3; i++) {
+    preySnakes.push(spawnPreySnake(i));
+  }
+
+  activeFrogs.length = 0;
+  const modeObj = modes[selectedMode] || modes[0];
+  for (let i = 0; i < 16; i++) {
+    let fx = 0, fz = 0;
+    if (modeObj.biomeType === 'rainforest') {
+      const sw = crocSwamps[i % crocSwamps.length];
+      const a = Math.random() * Math.PI * 2;
+      fx = sw.x + Math.cos(a) * sw.r * 1.25;
+      fz = sw.z + Math.sin(a) * sw.r * 1.25;
+    } else if (modeObj.biomeType === 'bigswamp') {
+      const a = Math.random() * Math.PI * 2;
+      const r = 5.0 + Math.random() * 9.0;
+      fx = Math.cos(a) * r;
+      fz = Math.sin(a) * r;
+    } else {
+      fx = (Math.random() * 2 - 1) * 34.0;
+      fz = (Math.random() * 2 - 1) * 34.0;
+    }
+    activeFrogs.push({
+      x: fx, z: fz,
+      speciesIdx: i % 4,
+      hopTime: Math.random() * 2
+    });
+  }
+
+  updateHUDStats();
+  const mmLabel = document.querySelector('.minimap-label');
+  if (mmLabel) {
+    if (modeObj.biomeType === 'desert') mmLabel.textContent = 'DESERT DUNES';
+    else if (modeObj.biomeType === 'bigswamp') mmLabel.textContent = 'GREAT SWAMP & ISLAND';
+    else if (modeObj.biomeType === 'grassland') mmLabel.textContent = 'VERDANT MEADOW';
+    else mmLabel.textContent = 'RAINFOREST RESERVE';
+  }
+  const brandSub = document.querySelector('.brand small');
+  if (brandSub) {
+    if (modeObj.biomeType === 'desert') brandSub.textContent = 'Australian Arid Desert Sands & Red Sandstone (96m × 96m)';
+    else if (modeObj.biomeType === 'bigswamp') brandSub.textContent = 'Very Big Swamp with Small Central Island (96m × 96m)';
+    else if (modeObj.biomeType === 'grassland') brandSub.textContent = 'Lush Woodland Trees & Green Grass (No Water)';
+    else brandSub.textContent = 'Tropical Rainforest with Rainfall & Small Swamps';
+  }
+
+  isGameLive = true;
+  lastTimestamp = performance.now();
+  document.querySelector('#menu-modal').classList.add('hidden');
+  document.querySelector('#finish-modal').classList.add('hidden');
+
+  requestAnimationFrame(gameLoop);
+}
+
+function steerInDirection(dir) {
+  initAudio();
+  if (dir === 'left') {
+    targetHeading -= 0.65;
+    playerHeading -= 0.65;
+  } else if (dir === 'right') {
+    targetHeading += 0.65;
+    playerHeading += 0.65;
+  }
+}
+
+// -------------------------------------------------------------
+// GAME LOOP & KINEMATICS UPDATE
+// -------------------------------------------------------------
+function updateSimulation(dt) {
+  gameTime += dt;
+  const isDash = gameTime < dashUntil;
+
+  // Steer with active pointer (continuous touch/mouse guidance for ages 5 to 83)
+  if (isPointerActive) {
+    steerTowardsScreenPoint(pointerPos[0], pointerPos[1]);
+  }
+
+  // Continuous keyboard & touch steering
+  const isLeft = keysDown.has('a') || keysDown.has('arrowleft') || activeDirs.has('left');
+  const isRight = keysDown.has('d') || keysDown.has('arrowright') || activeDirs.has('right');
+  const isUp = keysDown.has('w') || keysDown.has('arrowup') || activeDirs.has('up');
+  const isDown = keysDown.has('s') || keysDown.has('arrowdown') || activeDirs.has('down');
+
+  // Relative Steering: Turning left/right turns snake naturally relative to current heading
+  const steerRate = (isFamilyMode ? (isDash ? 5.2 : 4.4) : (isDash ? 4.5 : 3.6)) * dt;
+  if (isLeft && !isRight) {
+    targetHeading -= steerRate;
+    playerHeading -= steerRate;
+  } else if (isRight && !isLeft) {
+    targetHeading += steerRate;
+    playerHeading += steerRate;
+  }
+
+  // Speed modulation: W surges forward (+15%), S slows down for stealth/stalking (50%)
+  let baseSpeed = isFamilyMode ? (isDash ? 5.8 : 3.2) : (isDash ? 6.2 : 3.4);
+  if (isUp) baseSpeed *= 1.15;
+  if (isDown) baseSpeed *= 0.52;
+  const speed = baseSpeed;
+
+  // Stamina update: In Relaxed/Family Mode, drains slower and recharges fully in 1 second!
+  if (isDash) {
+    const drain = isFamilyMode ? 0.18 : 0.42;
+    dashStamina = Math.max(0, dashStamina - dt * drain);
+    if (dashStamina <= 0) dashUntil = 0;
+  } else {
+    const recharge = isFamilyMode ? 1.0 : 0.28;
+    dashStamina = Math.min(1.0, dashStamina + dt * recharge);
+  }
+  const stamFill = document.querySelector('#stamina-fill');
+  if (stamFill) {
+    stamFill.style.width = (dashStamina * 100).toFixed(0) + '%';
+  }
+
+  // Digestion bulges update (Player snake)
+  for (let b = digestionBulges.length - 1; b >= 0; b--) {
+    const bg = digestionBulges[b];
+    bg.t += dt * (bg.speed || 0.07);
+    if (bg.t > bg.maxT) digestionBulges.splice(b, 1);
+  }
+
+  // Digestion bulges update (Prey snakes)
+  for (let p = 0; p < preySnakes.length; p++) {
+    const pBulges = preySnakes[p].bulges;
+    if (pBulges && pBulges.length > 0) {
+      for (let b = pBulges.length - 1; b >= 0; b--) {
+        const bg = pBulges[b];
+        bg.t += dt * (bg.speed || 0.07);
+        if (bg.t > bg.maxT) pBulges.splice(b, 1);
+      }
+    }
+  }
+
+  let diff = targetHeading - playerHeading;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  const maxTurn = (isFamilyMode ? (isDash ? 6.8 : 5.4) : (isDash ? 5.2 : 3.8)) * dt;
+  playerHeading += Math.max(-maxTurn, Math.min(maxTurn, diff));
+
+  // Smooth camera yaw tracking behind snake heading
+  let camDiff = playerHeading - camHeading;
+  while (camDiff < -Math.PI) camDiff += Math.PI * 2;
+  while (camDiff > Math.PI) camDiff -= Math.PI * 2;
+  camHeading += camDiff * Math.min(1.0, dt * 2.8);
+
+  const head = playerSpine[0];
+  let nextX = head[0] + Math.cos(playerHeading) * speed * dt;
+  let nextZ = head[2] + Math.sin(playerHeading) * speed * dt;
+
+  if (Math.abs(nextX) > HALF_WORLD - 3.5 || Math.abs(nextZ) > HALF_WORLD - 3.5) {
+    targetHeading = Math.atan2(-nextZ, -nextX);
+    nextX = Math.max(-HALF_WORLD + 3.5, Math.min(HALF_WORLD - 3.5, nextX));
+    nextZ = Math.max(-HALF_WORLD + 3.5, Math.min(HALF_WORLD - 3.5, nextZ));
+  }
+
+  // Natural obstacle sliding around tree trunks (or cactus stems in desert)
+  const activeObstacles = (modes[selectedMode]?.biomeType === 'desert') ? desertCacti : jungleTrees;
+  for (let k = 0; k < activeObstacles.length; k++) {
+    const obs = activeObstacles[k];
+    const obsR = obs.rStem || obs.trunkR || obs.r || 0.35;
+    const dx = nextX - obs.x;
+    const dz = nextZ - obs.z;
+    const distSq = dx * dx + dz * dz;
+    const minD = obsR + 0.35;
+    if (distSq < minD * minD && distSq > 0.0001) {
+      const d = Math.sqrt(distSq);
+      nextX = obs.x + (dx / d) * minD;
+      nextZ = obs.z + (dz / d) * minD;
+    }
+  }
+
+  const nextY = getTerrainHeight(nextX, nextZ) + 0.15;
+  playerSpine[0] = [nextX, nextY, nextZ];
+
+  undulationPhase += speed * dt * 4.5;
+  for (let i = 1; i < playerSpine.length; i++) {
+    const prev = playerSpine[i - 1];
+    const curr = playerSpine[i];
+    const d = sub(curr, prev);
+    const dist = Math.hypot(d[0], d[2]) || 0.001;
+    const factor = SEG_SPACING / dist;
+
+    const tNorm = i / playerSpine.length;
+    const waveAmp = Math.sin(tNorm * Math.PI) * (isDash ? 0.08 : 0.05);
+    const wave = Math.sin(undulationPhase - i * 0.42) * waveAmp;
+
+    const normalSide = [-Math.sin(playerHeading), 0, Math.cos(playerHeading)];
+    const targetX = prev[0] + d[0] * factor + normalSide[0] * wave;
+    const targetZ = prev[2] + d[2] * factor + normalSide[2] * wave;
+    const targetY = getTerrainHeight(targetX, targetZ) + 0.14;
+
+    playerSpine[i] = [targetX, targetY, targetZ];
+  }
+
+  // Update dynamic audio graph (friction & river proximity)
+  updateAudio(dt, true, isDash, head);
+
+  // Interactive River Frogs (Hopping, croaking, edible for dash surge!)
+  for (let fIdx = 0; fIdx < activeFrogs.length; fIdx++) {
+    const frog = activeFrogs[fIdx];
+    frog.hopTime = (frog.hopTime || 0) + dt;
+    if (frog.hopTime > 3.0) {
+      frog.hopTime = 0;
+      const a = Math.random() * Math.PI * 2;
+      frog.x += Math.cos(a) * 0.75;
+      frog.z += Math.sin(a) * 0.75;
+    }
+    const distToFrog = Math.hypot(frog.x - head[0], frog.z - head[2]);
+    if (distToFrog < 13.0 && Math.random() < dt * 0.25) {
+      playFrogCroak();
+    }
+    const frogDist = isFamilyMode ? 2.6 : 1.45;
+    if (distToFrog < frogDist) {
+      frogsEaten++;
+      playFrogCatchSound();
+      dashStamina = 1.0;
+      dashUntil = Math.max(dashUntil, gameTime + 2.5); // Instant speed boost!
+
+      // Visual flash on frogs pill
+      const frogEl = document.querySelector('#frogs-pill');
+      if (frogEl) {
+        frogEl.style.transform = 'scale(1.2)';
+        frogEl.style.borderColor = '#69f0ae';
+        setTimeout(() => {
+          frogEl.style.transform = 'scale(1.0)';
+          frogEl.style.borderColor = '#5cd47566';
+        }, 300);
+      }
+
+      // Biome-aware frog / toad respawn
+      const modeObjNow = modes[selectedMode] || modes[0];
+      if (modeObjNow.biomeType === 'rainforest') {
+        const sw = crocSwamps[Math.floor(Math.random() * crocSwamps.length)];
+        const a = Math.random() * Math.PI * 2;
+        frog.x = sw.x + Math.cos(a) * sw.r * 1.25;
+        frog.z = sw.z + Math.sin(a) * sw.r * 1.25;
+      } else if (modeObjNow.biomeType === 'bigswamp') {
+        const a = Math.random() * Math.PI * 2;
+        const r = 5.0 + Math.random() * 9.0;
+        frog.x = Math.cos(a) * r;
+        frog.z = Math.sin(a) * r;
+      } else {
+        frog.x = (Math.random() * 2 - 1) * 35.0;
+        frog.z = (Math.random() * 2 - 1) * 35.0;
+      }
+      frog.speciesIdx = Math.floor(Math.random() * 4);
+      updateHUDStats();
+    }
+  }
+
+  const modeObj = modes[selectedMode];
+  for (let pIdx = 0; pIdx < preySnakes.length; pIdx++) {
+    const prey = preySnakes[pIdx];
+    const pHead = prey.spine[0];
+
+    // Multi-segment hit detection: check distance to ALL vertebrae of prey snake
+    let minPreyDist = 9999;
+    for (let seg = 0; seg < prey.spine.length; seg++) {
+      const sPos = prey.spine[seg];
+      const d = Math.hypot(sPos[0] - head[0], sPos[2] - head[2]);
+      if (d < minPreyDist) minPreyDist = d;
+    }
+
+    // Generous strike / catch threshold for relaxed tablet play:
+    // In Relaxed Mode: 4.8m normal, 6.4m during lunge dash (never misses by a hair!)
+    // In Brisk Mode: 2.8m normal, 3.8m during lunge dash.
+    const strikeRadius = isFamilyMode ? (isDash ? 6.4 : 4.8) : (isDash ? 3.8 : 2.8);
+    if (minPreyDist < strikeRadius) {
+      score++;
+      const isKingRat = modeObj.isKingRatSnake;
+      if (isKingRat) {
+        playKingRatHiss();
+      } else if (modeObj.isKingBrownSnake) {
+        playKingBrownHiss();
+      }
+      playCatchPreySound(isKingRat);
+      playCelebrationFanfare(); // Major chord chime fanfare
+
+      // Growth mechanic: add +4 vertebrae!
+      const lastSeg = playerSpine[playerSpine.length - 1];
+      for (let v = 0; v < 4; v++) {
+        playerSpine.push([...lastSeg]);
+      }
+
+      // Digestion bolus animation traveling down body
+      digestionBulges.push({ t: 0.04, maxT: 0.90, speed: 0.07, scale: 0.45 });
+
+      preySnakes[pIdx] = spawnPreySnake(pIdx);
+      updateHUDStats();
+
+      // Visual feedback on HUD score pill
+      const scoreEl = document.querySelector('#score-pill');
+      if (scoreEl) {
+        scoreEl.style.transform = 'scale(1.22)';
+        scoreEl.style.borderColor = '#ffd700';
+        setTimeout(() => {
+          scoreEl.style.transform = 'scale(1.0)';
+          scoreEl.style.borderColor = '#5cd47566';
+        }, 350);
+      }
+
+      if (score >= 5) {
+        finishGame(true);
+        return;
+      }
+      continue;
+    }
+
+    const isSluggish = prey.isSluggish || modeObj.isNocturnalSluggish;
+    const alertDist = isFamilyMode ? 6.5 : (isSluggish ? 5.5 : 9.5);
+
+    let nearestFrog = null;
+    let minFrogDist = 9999;
+
+    if (minPreyDist < alertDist) {
+      prey.fleeing = true;
+      prey.targetHeading = Math.atan2(pHead[2] - head[2], pHead[0] - head[0]);
+    } else {
+      prey.fleeing = false;
+
+      // Snake eater's prey stalks & eats nearby frogs!
+      for (let fIdx = 0; fIdx < activeFrogs.length; fIdx++) {
+        const fg = activeFrogs[fIdx];
+        const df = Math.hypot(fg.x - pHead[0], fg.z - pHead[2]);
+        if (df < minFrogDist) {
+          minFrogDist = df;
+          nearestFrog = fg;
+        }
+      }
+
+      if (nearestFrog && minFrogDist < 9.5) {
+        // Prey snake stalks toward frog
+        prey.targetHeading = Math.atan2(nearestFrog.z - pHead[2], nearestFrog.x - pHead[0]);
+
+        // Catch & swallow frog when within strike reach
+        if (minFrogDist < 1.45) {
+          if (!prey.bulges) prey.bulges = [];
+          prey.bulges.push({ t: 0.05, maxT: 0.90, speed: 0.065, scale: 0.44 });
+
+          // Prey snake grows slightly (+2 vertebrae up to 32)
+          if (prey.spine.length < 32) {
+            const lastPreySeg = prey.spine[prey.spine.length - 1];
+            for (let v = 0; v < 2; v++) {
+              prey.spine.push([...lastPreySeg]);
+            }
+          }
+
+          playPreyFrogCatchSound(minPreyDist);
+
+          // Biome-aware frog respawn
+          const modeObjNow = modes[selectedMode] || modes[0];
+          if (modeObjNow.biomeType === 'rainforest') {
+            const sw = crocSwamps[Math.floor(Math.random() * crocSwamps.length)];
+            const a = Math.random() * Math.PI * 2;
+            nearestFrog.x = sw.x + Math.cos(a) * sw.r * 1.25;
+            nearestFrog.z = sw.z + Math.sin(a) * sw.r * 1.25;
+          } else if (modeObjNow.biomeType === 'bigswamp') {
+            const a = Math.random() * Math.PI * 2;
+            const r = 5.0 + Math.random() * 9.0;
+            nearestFrog.x = Math.cos(a) * r;
+            nearestFrog.z = Math.sin(a) * r;
+          } else {
+            nearestFrog.x = (Math.random() * 2 - 1) * 35.0;
+            nearestFrog.z = (Math.random() * 2 - 1) * 35.0;
+          }
+          nearestFrog.speciesIdx = Math.floor(Math.random() * 4);
+          nearestFrog.hopTime = 0;
+        }
+      } else {
+        if (gameTime > prey.nextTurnTime) {
+          prey.targetHeading += (Math.random() * 2 - 1) * (isSluggish ? 0.6 : (isFamilyMode ? 0.8 : 1.2));
+          prey.nextTurnTime = gameTime + (isSluggish ? 4.0 : (isFamilyMode ? 3.2 : 2.2)) + Math.random() * 3.0;
+        }
+      }
+    }
+
+    let pDiff = prey.targetHeading - prey.heading;
+    while (pDiff < -Math.PI) pDiff += Math.PI * 2;
+    while (pDiff > Math.PI) pDiff -= Math.PI * 2;
+    const maxPTurn = (isSluggish ? 1.2 : (isFamilyMode ? 1.8 : 2.6)) * dt;
+    prey.heading += Math.max(-maxPTurn, Math.min(maxPTurn, pDiff));
+
+    // In Family Mode, prey flee speed is capped at 1.65 m/s (player is 3.2 - 5.8 m/s, so player easily catches up!)
+    // In Brisk Mode, normal prey flees at up to 2.7 m/s.
+    // When stalking a frog, moves deliberately; lunges if within 2.2m of frog
+    const isStalking = !prey.fleeing && nearestFrog && minFrogDist < 9.5;
+    const isFrogStrike = isStalking && minFrogDist < 2.2;
+    const pSpeed = prey.fleeing 
+      ? (isSluggish ? 1.25 : (isFamilyMode ? 1.65 : Math.min(2.7, prey.speed * 1.55))) 
+      : (isFrogStrike ? (isSluggish ? 1.8 : 2.4) : (isStalking ? (isSluggish ? 0.95 : 1.30) : (isFamilyMode ? 1.10 : prey.speed)));
+    let pNextX = pHead[0] + Math.cos(prey.heading) * pSpeed * dt;
+    let pNextZ = pHead[2] + Math.sin(prey.heading) * pSpeed * dt;
+
+    if (Math.abs(pNextX) > HALF_WORLD - 4.0 || Math.abs(pNextZ) > HALF_WORLD - 4.0) {
+      prey.targetHeading = Math.atan2(-pNextZ, -pNextX);
+      pNextX = Math.max(-HALF_WORLD + 4.0, Math.min(HALF_WORLD - 4.0, pNextX));
+      pNextZ = Math.max(-HALF_WORLD + 4.0, Math.min(HALF_WORLD - 4.0, pNextZ));
+    }
+
+    const pNextY = getTerrainHeight(pNextX, pNextZ) + 0.12;
+    prey.spine[0] = [pNextX, pNextY, pNextZ];
+
+    if (modeObj.isRattler && prey.fleeing && Math.random() < dt * 4.0) {
+      playRattleBuzz();
+    }
+
+    prey.undulation += pSpeed * dt * 4.2;
+    for (let i = 1; i < prey.spine.length; i++) {
+      const prev = prey.spine[i - 1];
+      const curr = prey.spine[i];
+      const d = sub(curr, prev);
+      const dist = Math.hypot(d[0], d[2]) || 0.001;
+      const factor = 0.28 / dist;
+      const wave = Math.sin(prey.undulation - i * 0.44) * 0.04;
+      const normalSide = [-Math.sin(prey.heading), 0, Math.cos(prey.heading)];
+      const targetX = prev[0] + d[0] * factor + normalSide[0] * wave;
+      const targetZ = prev[2] + d[2] * factor + normalSide[2] * wave;
+      prey.spine[i] = [targetX, getTerrainHeight(targetX, targetZ) + 0.12, targetZ];
+    }
+  }
+
+  updateScentHUD();
+}
+
+function updateHUDStats() {
+  const scoreEl = document.querySelector('#score-pill');
+  if (scoreEl) scoreEl.textContent = `🐍 Prey: ${score} / 5`;
+  const frogEl = document.querySelector('#frogs-pill');
+  if (frogEl) frogEl.textContent = `🐸 Frogs: ${frogsEaten}`;
+  const timeEl = document.querySelector('#time-pill');
+  if (timeEl) {
+    const mins = Math.floor(gameTime / 60);
+    const secs = String(Math.floor(gameTime % 60)).padStart(2, '0');
+    timeEl.textContent = `⏱ ${mins}:${secs}`;
+  }
+}
+
+function updateScentHUD() {
+  const head = playerSpine[0];
+  if (!head || preySnakes.length === 0) return;
+
+  let nearestDist = 9999;
+  let nearestPrey = null;
+  for (const prey of preySnakes) {
+    const d = Math.hypot(prey.spine[0][0] - head[0], prey.spine[0][2] - head[2]);
+    if (d < nearestDist) {
+      nearestDist = d;
+      nearestPrey = prey;
+    }
+  }
+
+  if (nearestPrey) {
+    nearestPreyDistance = nearestDist;
+    const modeObj = modes[selectedMode];
+    const dx = nearestPrey.spine[0][0] - head[0];
+    const dz = nearestPrey.spine[0][2] - head[2];
+    const scentAngle = Math.atan2(dz, dx) - playerHeading;
+    const compassEl = document.querySelector('#scent-compass');
+    if (compassEl) {
+      compassEl.style.transform = `rotate(${scentAngle}rad)`;
+    }
+    const inStrikeRange = nearestDist < (gameTime < dashUntil ? 6.4 : 4.8);
+    const dashBtn = document.querySelector('#dash-btn');
+    if (dashBtn) {
+      dashBtn.classList.toggle('in-range', inStrikeRange);
+    }
+    const scentText = document.querySelector('#scent-text');
+    if (scentText) {
+      const distMeters = Math.round(nearestDist * 1.5);
+      if (isFamilyMode) {
+        if (inStrikeRange) {
+          scentText.textContent = `🎯 STRIKE IN RANGE! Tap ⚡ STRIKE LUNGE or Screen!`;
+        } else if (distMeters < 16) {
+          scentText.textContent = `🌟 Closing in! ${modeObj.food} right ahead (${distMeters}m)`;
+        } else {
+          scentText.textContent = `👅 Follow Yellow Arrow: ${modeObj.food} ~${distMeters}m`;
+        }
+      } else {
+        const intensity = distMeters < 15 ? 'Hot Scent / Strike!' : distMeters < 35 ? 'Moderate' : 'Faint';
+        scentText.textContent = `Scent: ${modeObj.food} · ${distMeters}m (${intensity})`;
+      }
+    }
+  }
+
+  updateHUDStats();
+}
+
+// -------------------------------------------------------------
+// 3D SCENE RENDERING PASS (IMMERSIVE THIRD-PERSON CAMERA)
+// -------------------------------------------------------------
+function renderScene() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const width = canvas.clientWidth * dpr;
+  const height = canvas.clientHeight * dpr;
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+    gl.viewport(0, 0, width, height);
+  }
+
+  const modeObj = modes[selectedMode] || modes[0];
+  if (modeObj.biomeType === 'desert') {
+    gl.clearColor(0.80, 0.62, 0.40, 1.0); // Warm sunlit amber desert haze
+  } else if (modeObj.biomeType === 'bigswamp') {
+    gl.clearColor(0.12, 0.25, 0.18, 1.0); // Misty subtropical swamp fog
+  } else if (modeObj.biomeType === 'grassland') {
+    gl.clearColor(0.28, 0.52, 0.38, 1.0); // Crisp sunny grassland canopy
+  } else {
+    gl.clearColor(0.16, 0.28, 0.24, 1.0); // Drizzling rainforest misty fog
+  }
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST);
+  gl.disable(gl.CULL_FACE);
+
+  const head = playerSpine[0] || [0, 0, 0];
+  const aspect = width / height;
+
+  // Immersive following camera angled along the snake's journey
+  const camDist = 9.0;
+  const camHeight = 6.2;
+  const camPos = [
+    head[0] - Math.cos(camHeading) * camDist,
+    head[1] + camHeight,
+    head[2] - Math.sin(camHeading) * camDist
+  ];
+  const camTarget = [
+    head[0] + Math.cos(camHeading) * 2.8,
+    head[1] + 0.4,
+    head[2] + Math.sin(camHeading) * 2.8
+  ];
+
+  const proj = matPerspective(0.74, aspect, 0.2, 120.0);
+  const view = matLookAt(camPos, camTarget);
+  const vp = matMul(proj, view);
+
+  gl.uniformMatrix4fv(loc.uVP, false, vp);
+  gl.uniform3fv(loc.uCamPos, camPos);
+  gl.uniform3f(loc.uLightDir, -0.45, 0.85, 0.35);
+  gl.uniform1f(loc.uTime, gameTime);
+
+  // 1. Biome-tailored Terrain (Multi-frequency Grass, Swamp or Desert)
+  const idMat = matIdentity();
+  gl.uniformMatrix4fv(loc.uModel, false, idMat);
+  gl.uniformMatrix3fv(loc.uNormalMat, false, normalMatFromModel(idMat));
+  gl.uniform1f(loc.uMatType, 0.0); // Biome terrain
+  const biomeCode = modeObj.biomeType === 'desert' ? 3.0 : modeObj.biomeType === 'bigswamp' ? 2.0 : modeObj.biomeType === 'grassland' ? 1.0 : 0.0;
+  gl.uniform1f(loc.uPatternType, biomeCode);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, terrainMesh.vb);
+  gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, terrainMesh.nb);
+  gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, terrainMesh.ub);
+  gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, terrainMesh.ib);
+  gl.drawElements(gl.TRIANGLES, terrainMesh.count, gl.UNSIGNED_SHORT, 0);
+
+  // 2. Water Surface (Only for Rainforest small swamps and Big Swamp; ZERO water for Grassland & Desert)
+  if (!modeObj.noWater && waterMesh && waterMesh.count > 0) {
+    gl.uniform1f(loc.uMatType, 5.0); // Water
+    gl.uniform3fv(loc.uBaseColor, modeObj.isSwamp ? [0.11, 0.26, 0.16] : [0.12, 0.36, 0.30]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, waterMesh.vb);
+    gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, waterMesh.nb);
+    gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, waterMesh.ub);
+    gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, waterMesh.ib);
+    gl.drawElements(gl.TRIANGLES, waterMesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+
+  // 3. Scenery (Trees, Rocks, Logs, Bamboo, Ferns or Sandstone)
+  drawScenery();
+
+  // 4. Frogs / Desert Toads
+  for (const frog of activeFrogs) {
+    drawRealisticFrog(frog, gameTime);
+  }
+
+  // 5. Prey Snakes
+  for (const prey of preySnakes) {
+    drawAnatomicalSnake(prey.spine, modeObj, true, 0, prey);
+  }
+
+  // 6. Player Snake with Seamless Head, Scales, Eyes & Forked Tongue
+  const tonguePhase = Math.max(0, (tongueFlickUntil - gameTime) / 0.55);
+  drawAnatomicalSnake(playerSpine, modeObj, false, tonguePhase);
+
+  // 7. Dynamic 3D Raindrops (Tropical Rainforest Shower for King Cobra)
+  if (modeObj.hasRain) {
+    updateAndDrawRain(0.016, head);
+  }
+
+  // 8. Minimap
+  renderMinimap();
+}
+
+// -------------------------------------------------------------
+// 2D MINIMAP PASS (RESERVE OVERVIEW)
+// -------------------------------------------------------------
+const minimapCanvas = document.querySelector('#minimap');
+const mmCtx = minimapCanvas.getContext('2d');
+
+function renderMinimap() {
+  const w = minimapCanvas.width;
+  const h = minimapCanvas.height;
+  mmCtx.clearRect(0, 0, w, h);
+
+  const toMM = (x, z) => [
+    ((x + HALF_WORLD) / WORLD_SIZE) * w,
+    ((z + HALF_WORLD) / WORLD_SIZE) * h
+  ];
+
+  const modeObj = modes[selectedMode] || modes[0];
+  if (modeObj.biomeType === 'desert') {
+    // 3. Desert Dunes: warm golden sand background with wind ripples (NO WATER)
+    mmCtx.fillStyle = '#3a2712';
+    mmCtx.fillRect(0, 0, w, h);
+    mmCtx.strokeStyle = '#5a3d1c';
+    mmCtx.lineWidth = 1.4;
+    for (let r = 12; r < h; r += 16) {
+      mmCtx.beginPath();
+      mmCtx.moveTo(0, r);
+      mmCtx.bezierCurveTo(w * 0.35, r - 5, w * 0.65, r + 5, w, r);
+      mmCtx.stroke();
+    }
+    // Draw green cactus indicators on desert minimap
+    mmCtx.fillStyle = '#386641';
+    for (let c = 0; c < desertCacti.length; c += 2) {
+      const cac = desertCacti[c];
+      if (cac.type === 'saguaro') {
+        const [cx, cy] = toMM(cac.x, cac.z);
+        mmCtx.fillRect(cx - 0.8, cy - 2.0, 1.6, 4.0);
+      }
+    }
+  } else if (modeObj.biomeType === 'bigswamp') {
+    // 2. Very Big Swamp background (water)
+    mmCtx.fillStyle = '#0a2a1d';
+    mmCtx.fillRect(0, 0, w, h);
+    // Very Small Central Island
+    const [cx, cy] = toMM(0, 0);
+    const islandR_MM = (9.0 / WORLD_SIZE) * w;
+    mmCtx.fillStyle = '#2d6a3f';
+    mmCtx.beginPath();
+    mmCtx.arc(cx, cy, islandR_MM, 0, Math.PI * 2);
+    mmCtx.fill();
+    mmCtx.strokeStyle = '#52b788';
+    mmCtx.lineWidth = 1.5;
+    mmCtx.stroke();
+  } else if (modeObj.biomeType === 'grassland') {
+    // 1. Pure Green Grass & Trees (NO WATER)
+    mmCtx.fillStyle = '#163e1e';
+    mmCtx.fillRect(0, 0, w, h);
+  } else {
+    // 0. Rainforest with small crocodile-mouth wide swamps
+    mmCtx.fillStyle = '#0c2617';
+    mmCtx.fillRect(0, 0, w, h);
+    crocSwamps.forEach(sw => {
+      const [mx, my] = toMM(sw.x, sw.z);
+      mmCtx.fillStyle = '#267b68';
+      mmCtx.beginPath();
+      mmCtx.arc(mx, my, 2.5, 0, Math.PI * 2);
+      mmCtx.fill();
+    });
+  }
+
+  // Find nearest prey for family guidance
+  let nearestPreyMM = null;
+  let minPreyDistMM = 9999;
+  const pHead = playerSpine[0];
+  if (pHead) {
+    for (const prey of preySnakes) {
+      const d = Math.hypot(prey.spine[0][0] - pHead[0], prey.spine[0][2] - pHead[2]);
+      if (d < minPreyDistMM) {
+        minPreyDistMM = d;
+        nearestPreyMM = prey;
+      }
+    }
+  }
+
+  // Draw golden guidance scent trail in Family Mode
+  if (isFamilyMode && pHead && nearestPreyMM) {
+    const [hx, hy] = toMM(pHead[0], pHead[2]);
+    const [nx, ny] = toMM(nearestPreyMM.spine[0][0], nearestPreyMM.spine[0][2]);
+    mmCtx.save();
+    mmCtx.setLineDash([3, 3]);
+    mmCtx.strokeStyle = '#ffd700';
+    mmCtx.lineWidth = 2.0;
+    mmCtx.beginPath();
+    mmCtx.moveTo(hx, hy);
+    mmCtx.lineTo(nx, ny);
+    mmCtx.stroke();
+    mmCtx.restore();
+  }
+
+  // Frogs / toads on minimap
+  mmCtx.fillStyle = '#4ade80';
+  for (let f = 0; f < activeFrogs.length; f++) {
+    const fg = activeFrogs[f];
+    const [fx, fy] = toMM(fg.x, fg.z);
+    mmCtx.beginPath();
+    mmCtx.arc(fx, fy, 1.8, 0, Math.PI * 2);
+    mmCtx.fill();
+  }
+
+  for (const prey of preySnakes) {
+    const [px, py] = toMM(prey.spine[0][0], prey.spine[0][2]);
+    mmCtx.fillStyle = '#ffde59';
+    mmCtx.beginPath();
+    mmCtx.arc(px, py, 3.5, 0, Math.PI * 2);
+    mmCtx.fill();
+
+    // In Family Mode, highlight the nearest target with an animated pulsing halo ring
+    if (isFamilyMode && prey === nearestPreyMM) {
+      const pulseR = 5.0 + Math.sin(gameTime * 7.0) * 2.5;
+      mmCtx.strokeStyle = '#ffeb3b';
+      mmCtx.lineWidth = 1.5;
+      mmCtx.beginPath();
+      mmCtx.arc(px, py, pulseR, 0, Math.PI * 2);
+      mmCtx.stroke();
+    }
+  }
+
+  if (playerSpine.length > 0) {
+    mmCtx.strokeStyle = '#7be058';
+    mmCtx.lineWidth = 2.8;
+    mmCtx.beginPath();
+    playerSpine.forEach((pt, i) => {
+      const [px, py] = toMM(pt[0], pt[2]);
+      if (i === 0) mmCtx.moveTo(px, py);
+      else mmCtx.lineTo(px, py);
+    });
+    mmCtx.stroke();
+
+    const [hx, hy] = toMM(playerSpine[0][0], playerSpine[0][2]);
+    mmCtx.fillStyle = '#ffffff';
+    mmCtx.beginPath();
+    mmCtx.arc(hx, hy, 4.5, 0, Math.PI * 2);
+    mmCtx.fill();
+    mmCtx.strokeStyle = '#69f0ae';
+    mmCtx.lineWidth = 1.5;
+    mmCtx.stroke();
+  }
+}
+
+// -------------------------------------------------------------
+// GAME LOOP DRIVER
+// -------------------------------------------------------------
+function gameLoop(now) {
+  if (!isGameLive) return;
+  const dt = Math.min((now - lastTimestamp) / 1000, 0.05);
+  lastTimestamp = now;
+
+  updateSimulation(dt);
+  renderScene();
+
+  if (isGameLive) requestAnimationFrame(gameLoop);
+}
+
+// -------------------------------------------------------------
+// FINISH & VICTORY MODAL
+// -------------------------------------------------------------
+function finishGame(win) {
+  isGameLive = false;
+  const modeObj = modes[selectedMode];
+  const finishModal = document.querySelector('#finish-modal');
+  const titleEl = document.querySelector('#end-title');
+  const copyEl = document.querySelector('#end-copy');
+
+  if (win) {
+    let biome = '9,200 m² rainforest reserve with small swamps';
+    if (modeObj.biomeType === 'desert') biome = '9,200 m² Australian arid desert dunes';
+    else if (modeObj.biomeType === 'bigswamp') biome = '9,200 m² great swamp & small island';
+    else if (modeObj.biomeType === 'grassland') biome = '9,200 m² verdant meadow & forest (no water)';
+
+    titleEl.textContent = '🏆 Apex Predator of the Biome!';
+    copyEl.innerHTML = `Magnificent slithering! As the <b>${modeObj.player}</b> (<i>${modeObj.latinPlayer}</i>), you dominated the ${biome}!<br><br>` +
+      `🐍 <b>Prey Serpents Hunted:</b> 5 ${modeObj.food}s<br>` +
+      `🐸 <b>Critters Swallowed:</b> ${frogsEaten}<br>` +
+      `📏 <b>Final Snake Length:</b> ${playerSpine.length} vertebrae<br>` +
+      `⏱ <b>Elapsed Hunt Time:</b> ${Math.floor(gameTime)} seconds`;
+  } else {
+    titleEl.textContent = 'Hunt Paused';
+    copyEl.textContent = 'Explore deeper into the jungle groves and follow your forked tongue scent trails.';
+  }
+  finishModal.classList.remove('hidden');
+}
+
+// -------------------------------------------------------------
+// CONTROLS & EVENT LISTENERS
+// -------------------------------------------------------------
+const keysDown = new Set();
+const activeDirs = new Set();
+
+window.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  const tracked = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', ' ', 'shift', 't'];
+  if (tracked.includes(k) || tracked.includes(e.key.toLowerCase())) {
+    e.preventDefault();
+  }
+  initAudio();
+  keysDown.add(k);
+  if (e.key === 'ArrowUp') keysDown.add('arrowup');
+  if (e.key === 'ArrowDown') keysDown.add('arrowdown');
+  if (e.key === 'ArrowLeft') keysDown.add('arrowleft');
+  if (e.key === 'ArrowRight') keysDown.add('arrowright');
+
+  if (e.key === ' ' || e.key === 'Shift') {
+    triggerDash();
+  }
+  if (k === 't') {
+    triggerTongueFlick();
+  }
+});
+
+window.addEventListener('keyup', e => {
+  const k = e.key.toLowerCase();
+  keysDown.delete(k);
+  if (e.key === 'ArrowUp') keysDown.delete('arrowup');
+  if (e.key === 'ArrowDown') keysDown.delete('arrowdown');
+  if (e.key === 'ArrowLeft') keysDown.delete('arrowleft');
+  if (e.key === 'ArrowRight') keysDown.delete('arrowright');
+});
+
+document.querySelectorAll('.key[data-dir]').forEach(btn => {
+  const dir = btn.dataset.dir;
+  const start = e => {
+    e.preventDefault();
+    initAudio();
+    btn.classList.add('down');
+    activeDirs.add(dir);
+  };
+  const end = () => {
+    btn.classList.remove('down');
+    activeDirs.delete(dir);
+  };
+  btn.addEventListener('pointerdown', start);
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => btn.addEventListener(ev, end));
+});
+
+let isPointerActive = false;
+let steeringPointerId = null;
+let pointerPos = [0, 0];
+
+function steerTowardsScreenPoint(clientX, clientY) {
+  const cx = window.innerWidth * 0.5;
+  const cy = window.innerHeight * 0.58; // Snake head is centered slightly below middle
+  const dx = clientX - cx;
+  const dy = clientY - cy;
+  if (Math.hypot(dx, dy) > 22) {
+    const screenAngle = Math.atan2(dx, -dy);
+    targetHeading = camHeading + screenAngle;
+  }
+}
+
+canvas.addEventListener('pointerdown', e => {
+  if (isPointerActive) return; // Dedicated steering touch
+  initAudio();
+  isPointerActive = true;
+  steeringPointerId = e.pointerId;
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+  pointerPos = [e.clientX, e.clientY];
+  steerTowardsScreenPoint(e.clientX, e.clientY);
+});
+
+canvas.addEventListener('pointermove', e => {
+  if (!isPointerActive || e.pointerId !== steeringPointerId) return;
+  pointerPos = [e.clientX, e.clientY];
+  steerTowardsScreenPoint(e.clientX, e.clientY);
+});
+
+function releaseSteering(e) {
+  if (e && e.pointerId !== undefined && e.pointerId !== steeringPointerId) return;
+  isPointerActive = false;
+  if (steeringPointerId !== null) {
+    try { canvas.releasePointerCapture(steeringPointerId); } catch (_) {}
+    steeringPointerId = null;
+  }
+}
+
+canvas.addEventListener('pointerup', releaseSteering);
+canvas.addEventListener('pointercancel', releaseSteering);
+window.addEventListener('pointerup', releaseSteering);
+window.addEventListener('pointercancel', releaseSteering);
+
+const fsBtn = document.querySelector('#fs-btn');
+if (fsBtn) {
+  fsBtn.onclick = (e) => {
+    e.stopPropagation();
+    initAudio();
+    if (!document.fullscreenElement) {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen();
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen();
+      }
+      fsBtn.textContent = '✕';
+      fsBtn.title = 'Exit Fullscreen';
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+      fsBtn.textContent = '⛶';
+      fsBtn.title = 'Enter Tablet Fullscreen';
+    }
+  };
+  document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement) {
+      fsBtn.textContent = '✕';
+      fsBtn.title = 'Exit Fullscreen';
+    } else {
+      fsBtn.textContent = '⛶';
+      fsBtn.title = 'Enter Tablet Fullscreen';
+    }
+  });
+}
+
+const modeToggleBtn = document.querySelector('#mode-toggle-btn');
+if (modeToggleBtn) {
+  modeToggleBtn.onclick = (e) => {
+    e.stopPropagation();
+    initAudio();
+    isFamilyMode = !isFamilyMode;
+    if (isFamilyMode) {
+      modeToggleBtn.textContent = '🌟 Relaxed Tablet Mode: ON';
+      modeToggleBtn.classList.remove('brisk');
+      modeToggleBtn.title = 'Relaxed Tablet Mode: Dual-thumb layout, generous strike reach, strike magnetism';
+    } else {
+      modeToggleBtn.textContent = '⚡ Brisk Challenge: ON';
+      modeToggleBtn.classList.add('brisk');
+      modeToggleBtn.title = 'Brisk Challenge: Tighter strike reach, faster prey';
+    }
+  };
+}
+
+// Global gesture unlock for modern browser audio policy
+window.addEventListener('pointerdown', () => {
+  if (soundEnabled && (!audioCtx || audioCtx.state === 'suspended')) initAudio();
+}, { once: false });
+
+document.querySelector('#dash-btn').addEventListener('pointerdown', e => {
+  e.preventDefault();
+  triggerDash();
+});
+
+document.querySelector('#tongue-btn').addEventListener('pointerdown', e => {
+  e.preventDefault();
+  triggerTongueFlick();
+});
+
+document.querySelector('#sound-btn').onclick = (e) => {
+  e.stopPropagation();
+  soundEnabled = !soundEnabled;
+  const btn = document.querySelector('#sound-btn');
+  btn.textContent = soundEnabled ? '🔊' : '🔇';
+  btn.title = soundEnabled ? 'Audio Enabled' : 'Audio Muted';
+  if (soundEnabled) {
+    initAudio();
+    if (masterGain && audioCtx) masterGain.gain.setTargetAtTime(1.0, audioCtx.currentTime, 0.05);
+  } else {
+    if (masterGain && audioCtx) masterGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.05);
+  }
+};
+
+const modesContainer = document.querySelector('#modes-list');
+modes.forEach((m, idx) => {
+  const btn = document.createElement('button');
+  btn.className = 'mode' + (idx === 0 ? ' sel' : '');
+  btn.innerHTML = `
+    <b>${m.name}</b>
+    <div class="snake-duo">${m.player} ➔ ${m.food}</div>
+    <div class="facts">${m.desc}</div>
+  `;
+  btn.onclick = () => {
+    initAudio();
+    selectedMode = idx;
+    document.querySelectorAll('.mode').forEach((b, j) => b.classList.toggle('sel', j === idx));
+    rebuildBiomeMeshes();
+    renderScene();
+  };
+  modesContainer.appendChild(btn);
+});
+
+document.querySelector('#start-btn').onclick = initGame;
+document.querySelector('#replay-btn').onclick = () => {
+  document.querySelector('#menu-modal').classList.remove('hidden');
+  document.querySelector('#finish-modal').classList.add('hidden');
+};
+
+renderScene();
+
+})();
+</script>
+</body>
+</html>
